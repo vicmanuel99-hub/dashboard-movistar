@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <title>Dashboard Operativo Movistar - Calidad & TMO</title>
+  <title>Dashboard Operativo Movistar - Calidad & TMO v2.0</title>
   <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
   <style>
     * { box-sizing: border-box; font-family: 'Segoe UI', Calibri, sans-serif; }
@@ -26,7 +26,20 @@
     }
     .nav-buttons-wrap {
       display: flex;
+      align-items: center;
       gap: 6px;
+    }
+    .version-badge {
+      font-size: 11px;
+      font-weight: 600;
+      color: #64748b;
+      background: #e2e8f0;
+      border: 1px solid #cbd5e1;
+      padding: 2px 7px;
+      border-radius: 999px;
+      letter-spacing: 0.3px;
+      margin-left: 4px;
+      user-select: none;
     }
     .nav-btn {
       padding: 10px 22px;
@@ -357,6 +370,7 @@
     <div class="nav-buttons-wrap">
       <button id="btn-tab-calidad" class="nav-btn active-calidad" onclick="switchView('calidad')">📊 CALIDAD — TABLA DINÁMICA MATRICIAL LIMA</button>
       <button id="btn-tab-tmo" class="nav-btn" onclick="switchView('tmo')">⏱️ TMO — REVISIÓN LLAMADAS CAT</button>
+      <span class="version-badge" title="Versión del dashboard">v2.0</span>
     </div>
     <div id="cloud-global-status" class="cloud-badge">⏳ Conectando con la nube...</div>
   </div>
