@@ -1,0 +1,1216 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Dashboard Operativo Movistar - Calidad & TMO</title>
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
+  <style>
+    * { box-sizing: border-box; font-family: 'Segoe UI', Calibri, sans-serif; }
+    html, body {
+      width: 100%;
+      margin: 0;
+      padding: 8px 12px;
+      background: #f3f4f6;
+      color: #1f2937;
+    }
+
+    /* Pestañas superiores */
+    .nav-tabs {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 12px;
+      border-bottom: 2px solid #cbd5e1;
+    }
+    .nav-buttons-wrap {
+      display: flex;
+      gap: 6px;
+    }
+    .nav-btn {
+      padding: 10px 22px;
+      border: none;
+      background: #e2e8f0;
+      color: #334155;
+      font-weight: 700;
+      font-size: 13px;
+      cursor: pointer;
+      border-radius: 6px 6px 0 0;
+    }
+    .nav-btn.active-calidad { background: #0f4c4c; color: #ffffff; }
+    .nav-btn.active-tmo { background: #1b365d; color: #ffffff; }
+
+    .cloud-badge {
+      font-size: 12px;
+      padding: 5px 10px;
+      border-radius: 4px;
+      background: #e0f2fe;
+      color: #0369a1;
+      font-weight: 600;
+    }
+
+    .view-section { display: none; width: 100%; }
+    .view-section.active { display: block; width: 100%; }
+
+    /* Barra de carga compacta */
+    .upload-strip {
+      background: #ffffff;
+      border: 1px solid #d1d5db;
+      border-radius: 6px;
+      padding: 10px 14px;
+      margin-bottom: 12px;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      font-size: 13px;
+    }
+    .upload-strip input[type="file"] {
+      border: 1px solid #cbd5e1;
+      padding: 5px 8px;
+      border-radius: 4px;
+      background: #f8fafc;
+      font-size: 12px;
+    }
+    .filter-controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    .filter-controls input[type="text"],
+    .filter-controls input[type="password"],
+    .filter-controls select {
+      padding: 5px 9px;
+      border: 1px solid #cbd5e1;
+      border-radius: 4px;
+      font-size: 12px;
+    }
+    .btn-export {
+      background: #107c41;
+      color: #fff;
+      border: none;
+      padding: 6px 12px;
+      border-radius: 4px;
+      font-weight: 600;
+      font-size: 12px;
+      cursor: pointer;
+    }
+    .btn-export:hover { background: #0b5a2f; }
+
+    .btn-cloud {
+      background: #0284c7;
+      color: #fff;
+      border: none;
+      padding: 6px 12px;
+      border-radius: 4px;
+      font-weight: 700;
+      font-size: 12px;
+      cursor: pointer;
+    }
+    .btn-cloud:hover { background: #0369a1; }
+    .btn-cloud:disabled { background: #94a3b8; cursor: not-allowed; }
+
+    .status-line { width: 100%; font-size: 12px; color: #374151; margin-top: 4px; }
+
+    /* ============================================================
+       ESTILO EXCEL 1: CALIDAD (VERDE OSCURO #0f4c4c)
+       ============================================================ */
+    .excel-banner-calidad {
+      background: #0f4c4c;
+      color: #ffffff;
+      font-weight: 700;
+      font-size: 15px;
+      padding: 9px 14px;
+      letter-spacing: 0.3px;
+      border: 1px solid #0a3636;
+    }
+
+    .table-container {
+      width: 100%;
+      overflow-x: auto;
+      max-height: 740px;
+      background: #ffffff;
+      border: 1px solid #bfbfbf;
+    }
+
+    table.excel-grid {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+      white-space: nowrap;
+    }
+    table.excel-grid th, table.excel-grid td {
+      border: 1px solid #d9d9d9;
+      padding: 5px 8px;
+      text-align: center;
+    }
+
+    /* Fila TOTAL / PROM. DÍA */
+    tr.row-total-dia td {
+      background: #e9edf4;
+      font-weight: 700;
+      color: #1f2937;
+      border-bottom: 2px solid #808080;
+      position: sticky;
+      top: 0;
+      z-index: 4;
+    }
+    tr.row-total-dia td.total-final-box {
+      border: 2px solid #000000;
+      background: #d9e1f2;
+      font-size: 13px;
+    }
+
+    /* Encabezados Calidad con botón filtro/orden */
+    table.calidad-tbl thead tr.header-cols th {
+      background: #0f4c4c;
+      color: #ffffff;
+      font-weight: 700;
+      position: sticky;
+      top: 29px;
+      z-index: 4;
+      cursor: pointer;
+      user-select: none;
+    }
+    table.calidad-tbl thead tr.header-cols th:hover { background: #166666; }
+
+    .sort-icon {
+      display: inline-block;
+      background: #ffffff;
+      color: #0f4c4c;
+      font-size: 9px;
+      padding: 1px 3px;
+      border-radius: 2px;
+      margin-left: 4px;
+      vertical-align: middle;
+    }
+
+    /* Columnas fijas Matrícula + Operador */
+    .sticky-c1 { position: sticky; left: 0; z-index: 3; background: #ffffff; }
+    .sticky-c2 { position: sticky; left: 78px; z-index: 3; background: #ffffff; border-right: 2px solid #808080 !important; text-align: left !important; }
+    tr.row-total-dia .sticky-c1, tr.row-total-dia .sticky-c2 { background: #e9edf4; z-index: 5; }
+    tr.header-cols th.sticky-c1, tr.header-cols th.sticky-c2 { background: #0f4c4c; z-index: 6; }
+
+    /* Semáforos exactos */
+    .celda-verde { background-color: #c6efce !important; color: #006100; font-weight: 600; }
+    .celda-naranja { background-color: #f4b084 !important; color: #833c0c; font-weight: 700; }
+    .celda-amarilla { background-color: #ffeb9c !important; color: #9c6500; font-weight: 600; }
+
+    /* ============================================================
+       ESTILO EXCEL 2: TMO (AZUL CORPORATIVO #1b365d + KPIs + GRÁFICO)
+       ============================================================ */
+    .tmo-header-box {
+      background: #1b365d;
+      color: #ffffff;
+      padding: 10px 16px;
+      border-bottom: 1px solid #2c5282;
+    }
+    .tmo-header-box h2 { margin: 0; font-size: 17px; letter-spacing: 0.4px; }
+    .tmo-sub-box {
+      background: #24477a;
+      color: #e2e8f0;
+      font-style: italic;
+      font-size: 12px;
+      padding: 5px 16px;
+    }
+
+    /* 5 Tarjetas KPI */
+    .kpi-strip {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      background: #e8eef5;
+      border-bottom: 2px solid #1b365d;
+      margin-bottom: 14px;
+    }
+    @media (max-width: 900px) { .kpi-strip { grid-template-columns: repeat(2, 1fr); } }
+    .kpi-item {
+      padding: 10px 8px;
+      text-align: center;
+      border-right: 1px solid #cbd5e1;
+    }
+    .kpi-item:last-child { border-right: none; }
+    .kpi-label { font-size: 11px; font-weight: 700; color: #334155; text-transform: uppercase; margin-bottom: 4px; }
+    .kpi-val { font-size: 20px; font-weight: 800; color: #0f172a; }
+
+    /* Layout Tabla Izquierda + Gráfico Derecha */
+    .tmo-workspace {
+      display: grid;
+      grid-template-columns: 1.15fr 0.85fr;
+      gap: 14px;
+      align-items: start;
+      width: 100%;
+    }
+    @media (max-width: 1100px) { .tmo-workspace { grid-template-columns: 1fr; } }
+
+    .section-label-excel {
+      font-size: 13px;
+      font-weight: 700;
+      color: #1b365d;
+      margin-bottom: 6px;
+    }
+
+    table.tmo-tbl thead th {
+      background: #1b365d;
+      color: #ffffff;
+      font-weight: 700;
+      padding: 7px 10px;
+      position: sticky;
+      top: 0;
+      z-index: 3;
+      cursor: pointer;
+    }
+    table.tmo-tbl thead th:hover { background: #274c82; }
+    table.tmo-tbl tbody tr:hover { background: #f1f5f9; }
+
+    /* Barra de datos azul dentro de Total Llamadas */
+    .data-bar-cell {
+      position: relative;
+      text-align: right !important;
+      font-weight: 600;
+      min-width: 105px;
+    }
+    .data-bar-fill {
+      position: absolute;
+      left: 2px;
+      top: 3px;
+      bottom: 3px;
+      background: linear-gradient(90deg, #5b9bd5 0%, #bdd7ee 100%);
+      z-index: 1;
+      border-radius: 2px;
+    }
+    .data-bar-text { position: relative; z-index: 2; }
+
+    /* Gráfico horizontal estilo Excel a la derecha */
+    .chart-card {
+      background: #ffffff;
+      border: 1px solid #bfbfbf;
+      padding: 14px 16px;
+      max-height: 740px;
+      overflow-y: auto;
+    }
+    .chart-title {
+      text-align: center;
+      font-size: 17px;
+      font-weight: 700;
+      color: #404040;
+      margin: 0 0 12px 0;
+    }
+    .bar-row {
+      display: grid;
+      grid-template-columns: 1fr 220px;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 4px;
+      font-size: 11px;
+    }
+    .bar-track {
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+      background: repeating-linear-gradient(
+        to right,
+        transparent,
+        transparent 19.5%,
+        #d9d9d9 20%
+      );
+      height: 13px;
+    }
+    .bar-blue {
+      height: 9px;
+      background: #4472c4;
+      border-radius: 1px;
+      transition: width 0.3s;
+    }
+    .bar-op-name {
+      text-align: left;
+      color: #333333;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* Secciones secundarias plegables/inferiores */
+    .sub-card {
+      background: #ffffff;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      padding: 12px;
+      margin-top: 16px;
+    }
+    .sub-card-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    .wrap-comment {
+      white-space: normal;
+      min-width: 300px;
+      max-width: 550px;
+      text-align: left !important;
+      line-height: 1.35;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- NAVEGACIÓN -->
+  <div class="nav-tabs">
+    <div class="nav-buttons-wrap">
+      <button id="btn-tab-calidad" class="nav-btn active-calidad" onclick="switchView('calidad')">📊 CALIDAD — TABLA DINÁMICA MATRICIAL LIMA</button>
+      <button id="btn-tab-tmo" class="nav-btn" onclick="switchView('tmo')">⏱️ TMO — REVISIÓN LLAMADAS CAT</button>
+    </div>
+    <div id="cloud-global-status" class="cloud-badge">⏳ Conectando con la nube...</div>
+  </div>
+
+  <!-- =====================================================================
+       VISTA 1: CALIDAD (DISEÑO EXACTO EXCEL VERDE OSCURO)
+       ===================================================================== -->
+  <div id="view-calidad" class="view-section active">
+    <div class="upload-strip">
+      <div>
+        <strong>Actualizar Calidad (Sheet1): </strong>
+        <input type="file" accept=".xlsx,.xls,.csv" onchange="handleCalidadUpload(event)">
+      </div>
+      <div class="filter-controls">
+        <input type="text" id="search-calidad" placeholder="🔍 Filtrar operador o matrícula..." oninput="renderCalidadUI()">
+        <select id="filter-centro-calidad" onchange="renderCalidadUI()">
+          <option value="LIMA">Centro: LIMA</option>
+          <option value="TODOS">Todos los centros</option>
+        </select>
+        <select id="filter-estado-calidad" onchange="renderCalidadUI()">
+          <option value="TODOS">Mostrar: Todos los operadores</option>
+          <option value="CON_ENCUESTA">Solo con encuestas</option>
+          <option value="BAJAS">Solo promedio &lt; 4,50</option>
+        </select>
+        <input type="password" id="clave-calidad" placeholder="🔑 Clave admin" style="width:115px;">
+        <button id="btn-save-calidad" class="btn-cloud" onclick="guardarEnNube('calidad')" disabled>☁️ Guardar en la Nube</button>
+        <button class="btn-export" onclick="exportTableCSV('tbl-calidad-main', 'Matriz_Calidad_LIMA.csv')">Exportar CSV</button>
+      </div>
+      <div id="status-calidad" class="status-line">Cargando datos guardados en la nube...</div>
+    </div>
+
+    <div id="calidad-dashboard" style="display:none;">
+      <div class="excel-banner-calidad" id="banner-calidad-titulo">
+        TABLA DINÁMICA MATRICIAL LIMA: OPERADOR (MATRÍCULA) × FECHA DE RESPUESTA (fx_respuesta_ext)
+      </div>
+      <div class="table-container" id="container-calidad-matriz"></div>
+
+      <!-- Tablas complementarias: Comparativa Centros y Notas Bajas (3 comentarios) -->
+      <div style="display:grid; grid-template-columns: 0.7fr 1.8fr; gap: 14px; margin-top:16px;">
+        <div class="sub-card" style="margin-top:0;">
+          <div class="sub-card-head">
+            <strong style="color:#0f4c4c; font-size:13px;">COMPARATIVA POR CENTROS</strong>
+            <button class="btn-export" onclick="exportTableCSV('tbl-calidad-centros', 'Comparativa_Centros.csv')">CSV</button>
+          </div>
+          <div class="table-container" style="max-height:320px;" id="container-calidad-centros"></div>
+        </div>
+
+        <div class="sub-card" style="margin-top:0;">
+          <div class="sub-card-head">
+            <strong style="color:#833c0c; font-size:13px;">DETALLE NOTAS BAJAS (&lt; 4,00) — 3 COMENTARIOS UNIDOS</strong>
+            <button class="btn-export" onclick="exportTableCSV('tbl-calidad-bajas', 'Notas_Bajas.csv')">CSV</button>
+          </div>
+          <div class="table-container" style="max-height:320px;" id="container-calidad-bajas"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- =====================================================================
+       VISTA 2: TMO (DISEÑO EXACTO EXCEL AZUL #1b365d + KPIs + GRÁFICO)
+       ===================================================================== -->
+  <div id="view-tmo" class="view-section">
+    <div class="upload-strip">
+      <div>
+        <strong>Actualizar TMO (puedes marcar varios: sem1, sem2...): </strong>
+        <input type="file" accept=".xlsx,.xls,.csv" multiple onchange="handleTMOUpload(event)">
+      </div>
+      <div class="filter-controls">
+        <input type="text" id="search-tmo" placeholder="🔍 Filtrar operador o usuario..." oninput="renderTMOUI()">
+        <select id="filter-servicio-tmo" onchange="renderTMOUI()">
+          <option value="TODOS">Servicio: Todos</option>
+        </select>
+        <select id="filter-origen-tmo" onchange="renderTMOUI()">
+          <option value="TODOS">Origen: Todos</option>
+        </select>
+        <input type="password" id="clave-tmo" placeholder="🔑 Clave admin" style="width:115px;">
+        <button id="btn-save-tmo" class="btn-cloud" onclick="guardarEnNube('tmo')" disabled>☁️ Guardar en la Nube</button>
+        <button class="btn-export" onclick="exportTableCSV('tbl-tmo-main', 'Revision_TMO_Operador.csv')">Exportar CSV</button>
+      </div>
+      <div id="status-tmo" class="status-line">Cargando datos guardados en la nube...</div>
+    </div>
+
+    <div id="tmo-dashboard" style="display:none;">
+      <div class="tmo-header-box">
+        <h2>REVISIÓN DE TMO POR OPERADOR — LLAMADAS CAT (COLUMNA AK: TIEMPO)</h2>
+      </div>
+      <div class="tmo-sub-box" id="tmo-sub-info">
+        Conectado dinámicamente a la base de datos en la nube. Todos los indicadores, barras y gráficos se recalculan automáticamente.
+      </div>
+
+      <!-- 5 KPIs SUPERIORES -->
+      <div class="kpi-strip">
+        <div class="kpi-item">
+          <div class="kpi-label">TOTAL LLAMADAS</div>
+          <div class="kpi-val" id="kpi-llamadas">0</div>
+        </div>
+        <div class="kpi-item">
+          <div class="kpi-label">TMO GLOBAL (SEGUNDOS)</div>
+          <div class="kpi-val" id="kpi-tmo-seg">0,0</div>
+        </div>
+        <div class="kpi-item">
+          <div class="kpi-label">TMO GLOBAL (MINUTOS)</div>
+          <div class="kpi-val" id="kpi-tmo-min">0,00</div>
+        </div>
+        <div class="kpi-item">
+          <div class="kpi-label">TMO FORMATO MM:SS</div>
+          <div class="kpi-val" id="kpi-tmo-mmss">00:00</div>
+        </div>
+        <div class="kpi-item">
+          <div class="kpi-label">OPERADORES ACTIVOS</div>
+          <div class="kpi-val" id="kpi-operadores">0</div>
+        </div>
+      </div>
+
+      <!-- TABLA IZQUIERDA + GRÁFICO DERECHA -->
+      <div class="tmo-workspace">
+        <div>
+          <div class="section-label-excel">1. RESUMEN DINÁMICO DE TMO POR OPERADOR (HAZ CLIC EN CUALQUIER ENCABEZADO PARA ORDENAR)</div>
+          <div class="table-container" id="container-tmo-tabla"></div>
+        </div>
+
+        <div class="chart-card">
+          <h3 class="chart-title">TMO Promedio por Operador (Segundos)</h3>
+          <div id="container-tmo-grafico"></div>
+        </div>
+      </div>
+
+      <!-- TABLAS SECUNDARIAS: SERVICIO, ORIGEN Y MATRIZ DIARIA -->
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top:16px;">
+        <div class="sub-card" style="margin-top:0;">
+          <div class="sub-card-head">
+            <strong style="color:#1b365d; font-size:13px;">2. DESGLOSE POR SERVICIO</strong>
+            <button class="btn-export" onclick="exportTableCSV('tbl-tmo-serv', 'TMO_Servicio.csv')">CSV</button>
+          </div>
+          <div class="table-container" style="max-height:260px;" id="container-tmo-serv"></div>
+        </div>
+
+        <div class="sub-card" style="margin-top:0;">
+          <div class="sub-card-head">
+            <strong style="color:#1b365d; font-size:13px;">3. DESGLOSE POR ORIGEN</strong>
+            <button class="btn-export" onclick="exportTableCSV('tbl-tmo-orig', 'TMO_Origen.csv')">CSV</button>
+          </div>
+          <div class="table-container" style="max-height:260px;" id="container-tmo-orig"></div>
+        </div>
+      </div>
+
+      <div class="sub-card">
+        <div class="sub-card-head">
+          <strong style="color:#1b365d; font-size:13px;">4. EVOLUCIÓN DIARIA TMO POR OPERADOR (MM:SS)</strong>
+          <button class="btn-export" onclick="exportTableCSV('tbl-tmo-diario', 'TMO_Diario.csv')">CSV</button>
+        </div>
+        <div class="table-container" style="max-height:420px;" id="container-tmo-diario"></div>
+      </div>
+    </div>
+  </div>
+
+<script>
+  // URL DE TU GOOGLE APPS SCRIPT
+  const API_URL = "https://script.google.com/macros/s/AKfycbwS8Wl4NavuItAyrC5OCi1ij2udkxHpJn0E5N8tQHwFy3uUFWaUeoeYMt9HjBeydwKO/exec";
+
+  // PLANTILLA COMPLETA DE 34 OPERADORES (MATRÍCULA -> NOMBRE)
+  const DB_OPERADORES = {
+    "T756315": "AREVALO ACUÑA, HILDELBRANDO",
+    "T756311": "MIRANDA LOPEZ, JENNY",
+    "T759420": "APAGUEÑO GONZALES, PATRICIA",
+    "T763744": "CHOQUE CASTILLO, YUDEL",
+    "T763750": "YUPTON CJUIRO, YOSEPH RICARDO",
+    "T760334": "CARRANZA ALBERCA, DELIA MILENE",
+    "T754147": "RODRIGUEZ ALCALA, JUNIOR AGUSTIN",
+    "T754832": "RUBIO LOZANO, JUAN CARLOS",
+    "T761095": "CARPIO SIMPE, JESUS",
+    "T756111": "REGALADO MATTOS, GIANELLA MARGOT",
+    "T755194": "FIGUEROA SANTIVAÑEZ, MARIANELLA",
+    "T761090": "HUERTAS EYZAGUIRRE, ROMAN ALEXIS",
+    "T759423": "ALEJOS ALTAMIRANO, THONY",
+    "T761101": "GIRIBALDI CARRASCO, REGINA MARIA",
+    "T760328": "CALDERON CRISOSTOMO, ANGEL ENRIQUE",
+    "T760375": "FLORES PAZOS, HUGO MARTIN",
+    "T761093": "LIVIA TARAZONA, CHARISSE ADRIANA",
+    "T760337": "LEON CARLOS, RAFAEL SHANDE",
+    "T761094": "REATEGUI MALQUE, GABRIELA ALEXANDRA",
+    "T761099": "LAURA ACUÑA, MARTIN EDMUNDO",
+    "T754817": "LEANDRO SULCA, JOSE",
+    "T756321": "VEGA ORUNA, LEONARDO JAVIER",
+    "T760326": "LIZARRAGA MEZA, JOSE FERNANDO",
+    "T761092": "ATOCHE SOLANO, DIEGO ORLANDO",
+    "T761100": "NUREÑA CURAMPA, SAMIA MARSHALL",
+    "T763753": "PATIÑO PEÑA, PATRICK STEVEN",
+    "T760333": "DIAZ GOYCOCHEA, RAUL ALEXANDER",
+    "T754819": "SOTO VARGAS, SADITH YOMIRA",
+    "T754140": "MENDOZA ISUIZA, ARMANDO DANIEL",
+    "T759414": "BRACAMONTE PONTICEL, ALONSO",
+    "T754411": "AVALOS ROMAN, MARCOS ANTONIO",
+    "T761088": "JARA LLANTOY, RAFAEL AUGUSTO",
+    "T761102": "MEJIA GAVILAN, STEVEN",
+    "T758694": "ALTAMIRANO RAYMUNDO, FABRIZZIO ALESSANDRO"
+  };
+
+  function getNombreOperador(mat, fallback) {
+    const m = String(mat || '').trim().toUpperCase();
+    if (DB_OPERADORES[m]) return DB_OPERADORES[m];
+    if (fallback && String(fallback).trim()) return String(fallback).trim().replace(/\s+/g, ' ');
+    return m || 'SIN IDENTIFICAR';
+  }
+
+  let rawCalidad = [];
+  let rawTMO = [];
+  let sortCalidad = { col: 'prom', dir: 'asc' };
+  let sortTMO = { col: 'tmo', dir: 'desc' };
+
+  // =====================================================================
+  // CARGA AUTOMÁTICA DESDE GOOGLE SHEETS AL ABRIR LA PÁGINA
+  // =====================================================================
+  window.addEventListener('DOMContentLoaded', cargarDesdeNube);
+
+  async function cargarDesdeNube() {
+    const badge = document.getElementById('cloud-global-status');
+    try {
+      const resp = await fetch(API_URL);
+      const data = await resp.json();
+
+      // Cargar Calidad si existe en la nube
+      if (data.calidad && Array.isArray(data.calidad.datos) && data.calidad.datos.length > 0) {
+        rawCalidad = data.calidad.datos;
+        poblarCentrosCalidad();
+        document.getElementById('calidad-dashboard').style.display = 'block';
+        renderCalidadUI();
+        const fechaC = formatearFechaHoraPeru(data.calidad.fecha);
+        document.getElementById('status-calidad').innerHTML = `☁️ Datos cargados automáticamente (${rawCalidad.length.toLocaleString()} registros). Última actualización: <b>${fechaC}</b>.`;
+      } else {
+        document.getElementById('status-calidad').innerText = "Aún no hay datos de Calidad en la nube. Sube tu primer Excel CENTRO.xlsx, pon tu clave y haz clic en Guardar.";
+      }
+
+      // Cargar TMO si existe en la nube
+      if (data.tmo && Array.isArray(data.tmo.datos) && data.tmo.datos.length > 0) {
+        rawTMO = data.tmo.datos;
+        poblarFiltrosTMO();
+        document.getElementById('tmo-dashboard').style.display = 'block';
+        const fechaT = formatearFechaHoraPeru(data.tmo.fecha);
+        document.getElementById('tmo-sub-info').innerText = `Datos en la nube (${rawTMO.length.toLocaleString()} llamadas) — Última actualización: ${fechaT}.`;
+        document.getElementById('status-tmo').innerHTML = `☁️ Datos cargados automáticamente (${rawTMO.length.toLocaleString()} llamadas). Última actualización: <b>${fechaT}</b>.`;
+        renderTMOUI();
+      } else {
+        document.getElementById('status-tmo').innerText = "Aún no hay datos de TMO en la nube. Sube tus archivos Llamadas CAT, pon tu clave y haz clic en Guardar.";
+      }
+
+      badge.innerText = "☁️ Conectado a Google Sheets";
+      badge.style.background = "#dcfce7";
+      badge.style.color = "#166534";
+    } catch (err) {
+      badge.innerText = "⚠️ Modo local (sin conexión nube)";
+      badge.style.background = "#fef3c7";
+      badge.style.color = "#92400e";
+      document.getElementById('status-calidad').innerText = "No se pudo leer la nube. Puedes cargar tu archivo Excel localmente.";
+      document.getElementById('status-tmo').innerText = "No se pudo leer la nube. Puedes cargar tus archivos Excel localmente.";
+    }
+  }
+
+  async function guardarEnNube(tipo) {
+    const inputClave = document.getElementById(tipo === 'calidad' ? 'clave-calidad' : 'clave-tmo');
+    const statusEl = document.getElementById(tipo === 'calidad' ? 'status-calidad' : 'status-tmo');
+    const btn = document.getElementById(tipo === 'calidad' ? 'btn-save-calidad' : 'btn-save-tmo');
+
+    const clave = inputClave ? inputClave.value.trim() : "";
+    if (!clave) {
+      statusEl.innerHTML = `<span style="color:#b91c1c; font-weight:700;">⚠️ Escribe primero la contraseña de administrador en la casilla 🔑 Clave admin.</span>`;
+      if (inputClave) inputClave.focus();
+      return;
+    }
+
+    const textoOriginal = btn.innerText;
+    btn.disabled = true;
+    btn.innerText = "⏳ Subiendo...";
+    statusEl.innerText = "Enviando registros comprimidos a Google Sheets, espera unos segundos...";
+
+    try {
+      const payload = {
+        clave: clave,
+        tipo: tipo,
+        datos: tipo === 'calidad' ? compactarCalidad(rawCalidad) : compactarTMO(rawTMO)
+      };
+
+      const resp = await fetch(API_URL, {
+        method: "POST",
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: JSON.stringify(payload)
+      });
+      const res = await resp.json();
+
+      if (res.ok) {
+        statusEl.innerHTML = `✅ <span style="color:#15803d; font-weight:700;">¡Publicado en la nube correctamente!</span> (${payload.datos.length.toLocaleString()} registros activos para todo el equipo).`;
+        inputClave.value = "";
+      } else {
+        statusEl.innerHTML = `❌ <span style="color:#b91c1c; font-weight:700;">Error: ${res.error || "Contraseña incorrecta"}</span>`;
+        btn.disabled = false;
+      }
+    } catch (err) {
+      statusEl.innerHTML = `❌ <span style="color:#b91c1c; font-weight:700;">Error de red al conectar con Apps Script: ${err.message}</span>`;
+      btn.disabled = false;
+    } finally {
+      btn.innerText = textoOriginal;
+    }
+  }
+
+  // Extrae solo las columnas que usa el dashboard para reducir peso un 85%
+  function compactarCalidad(rows) {
+    if (!rows.length) return [];
+    const keys = Object.keys(rows[0]);
+    const colCentro = keys.find(k => k.toUpperCase() === 'CENTRO') || keys[0];
+    const colMat = keys.find(k => k.toUpperCase() === 'MATRICULA') || keys[28];
+    const colNota = keys.find(k => k.toUpperCase() === 'SATISFACCION') || keys.find(k => k.toLowerCase() === 'nu_sat') || keys[4];
+    const colFecha = keys.find(k => k.toLowerCase() === 'fx_respuesta_ext') || keys[50];
+    const colC1 = keys.find(k => k.toLowerCase() === 'ds_desc_sat') || '';
+    const colC2 = keys.find(k => k.toLowerCase() === 'ds_desc_no_resolucion') || '';
+    const colC3 = keys.find(k => k.toLowerCase() === 'ds_comentarios') || '';
+
+    return rows.map(r => ({
+      CENTRO: r[colCentro],
+      MATRICULA: r[colMat],
+      SATISFACCION: r[colNota],
+      fx_respuesta_ext: formatDDMM(r[colFecha]) || r[colFecha],
+      ds_desc_sat: colC1 ? r[colC1] : '',
+      ds_desc_no_resolucion: colC2 ? r[colC2] : '',
+      ds_comentarios: colC3 ? r[colC3] : ''
+    })).filter(r => r.SATISFACCION !== "" && r.SATISFACCION !== null && r.SATISFACCION !== undefined);
+  }
+
+  function compactarTMO(rows) {
+    if (!rows.length) return [];
+    const keys = Object.keys(rows[0]);
+    const colUser = keys.find(k => k.toUpperCase() === 'USUARIO') || keys[1];
+    const colNom = keys.find(k => k.toUpperCase() === 'NOMBRE') || keys[2];
+    const colFecha = keys.find(k => k.toUpperCase().includes('FECHA INICIO')) || keys[3];
+    const colServ = keys.find(k => k.toUpperCase() === 'SERVICIO') || keys[6];
+    const colOrig = keys.find(k => k.toUpperCase() === 'ORIGEN') || keys[7];
+    const colTiempo = keys.find(k => k.toUpperCase() === 'TIEMPO') || keys[36];
+
+    return rows.map(r => ({
+      USUARIO: r[colUser],
+      NOMBRE: r[colNom],
+      "FECHA INICIO": formatDDMM(r[colFecha]) || r[colFecha],
+      SERVICIO: r[colServ],
+      ORIGEN: r[colOrig],
+      TIEMPO: parseSeconds(r[colTiempo])
+    })).filter(r => !isNaN(r.TIEMPO) && r.TIEMPO >= 0);
+  }
+
+  function formatearFechaHoraPeru(iso) {
+    if (!iso) return 'Reciente';
+    try {
+      const d = new Date(iso);
+      return d.toLocaleString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+    } catch { return iso; }
+  }
+
+  function switchView(tab) {
+    document.querySelectorAll('.view-section').forEach(v => v.classList.remove('active'));
+    document.getElementById('btn-tab-calidad').className = 'nav-btn';
+    document.getElementById('btn-tab-tmo').className = 'nav-btn';
+
+    document.getElementById('view-' + tab).classList.add('active');
+    document.getElementById('btn-tab-' + tab).classList.add(tab === 'calidad' ? 'active-calidad' : 'active-tmo');
+  }
+
+  function parseWorkbookFile(file, keywords) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = e => {
+        try {
+          const wb = XLSX.read(new Uint8Array(e.target.result), { type: 'array', cellDates: true });
+          let sheet = wb.SheetNames[0];
+          if (wb.SheetNames.includes('Sheet1')) sheet = 'Sheet1';
+          else if (wb.SheetNames.includes('Llamadas CAT')) sheet = 'Llamadas CAT';
+
+          const matrix = XLSX.utils.sheet_to_json(wb.Sheets[sheet], { header: 1, defval: "" });
+          let hIdx = 0;
+          for (let i = 0; i < Math.min(20, matrix.length); i++) {
+            const up = matrix[i].map(c => String(c || '').trim().toUpperCase());
+            if (keywords.some(k => up.includes(k))) { hIdx = i; break; }
+          }
+          const headers = matrix[hIdx].map((h, idx) => String(h || `COL_${idx}`).trim());
+          const rows = [];
+          for (let r = hIdx + 1; r < matrix.length; r++) {
+            const arr = matrix[r];
+            if (!arr || arr.every(v => v === "" || v === null)) continue;
+            const obj = {};
+            headers.forEach((h, idx) => obj[h] = arr[idx]);
+            rows.push(obj);
+          }
+          resolve({ rows, sheet, fileName: file.name });
+        } catch (err) { reject(err); }
+      };
+      reader.onerror = reject;
+      reader.readAsArrayBuffer(file);
+    });
+  }
+
+  // =====================================================================
+  // LÓGICA CALIDAD
+  // =====================================================================
+  function poblarCentrosCalidad() {
+    if (!rawCalidad.length) return;
+    const keys = Object.keys(rawCalidad[0] || {});
+    const colC = keys.find(k => k.toUpperCase() === 'CENTRO') || keys[0];
+    const centros = new Set(rawCalidad.map(r => String(r[colC] || '').trim().toUpperCase()).filter(Boolean));
+    const sel = document.getElementById('filter-centro-calidad');
+    sel.innerHTML = `<option value="TODOS">Todos los centros</option>`;
+    Array.from(centros).sort().forEach(c => {
+      sel.innerHTML += `<option value="${c}" ${c === 'LIMA' ? 'selected' : ''}>Centro: ${c}</option>`;
+    });
+  }
+
+  async function handleCalidadUpload(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    document.getElementById('status-calidad').innerText = "Procesando archivo...";
+    const res = await parseWorkbookFile(file, ['CENTRO', 'MATRICULA', 'SATISFACCION']);
+    rawCalidad = res.rows;
+
+    poblarCentrosCalidad();
+    document.getElementById('calidad-dashboard').style.display = 'block';
+    document.getElementById('btn-save-calidad').disabled = false;
+    renderCalidadUI();
+    document.getElementById('status-calidad').innerHTML = `📂 Vista previa local: <b>${res.fileName}</b> (${res.rows.length.toLocaleString()} registros). Escribe tu clave y haz clic en <b>☁️ Guardar en la Nube</b>.`;
+  }
+
+  function setSortCalidad(col) {
+    if (sortCalidad.col === col) sortCalidad.dir = sortCalidad.dir === 'asc' ? 'desc' : 'asc';
+    else { sortCalidad.col = col; sortCalidad.dir = col === 'nombre' || col === 'mat' ? 'asc' : 'desc'; }
+    renderCalidadUI();
+  }
+
+  function renderCalidadUI() {
+    if (!rawCalidad.length) return;
+    const centroSel = document.getElementById('filter-centro-calidad').value;
+    const search = document.getElementById('search-calidad').value.trim().toUpperCase();
+    const estadoSel = document.getElementById('filter-estado-calidad').value;
+
+    document.getElementById('banner-calidad-titulo').innerText =
+      `TABLA DINÁMICA MATRICIAL ${centroSel}: OPERADOR (MATRÍCULA) × FECHA DE RESPUESTA (fx_respuesta_ext)`;
+
+    const keys = Object.keys(rawCalidad[0]);
+    const colCentro = keys.find(k => k.toUpperCase() === 'CENTRO') || keys[0];
+    const colMat = keys.find(k => k.toUpperCase() === 'MATRICULA') || keys[28];
+    const colNota = keys.find(k => k.toUpperCase() === 'SATISFACCION') || keys.find(k => k.toLowerCase() === 'nu_sat') || keys[4];
+    const colFecha = keys.find(k => k.toLowerCase() === 'fx_respuesta_ext') || keys[50];
+    const colC1 = keys.find(k => k.toLowerCase() === 'ds_desc_sat') || '';
+    const colC2 = keys.find(k => k.toLowerCase() === 'ds_desc_no_resolucion') || '';
+    const colC3 = keys.find(k => k.toLowerCase() === 'ds_comentarios') || '';
+
+    const fechasSet = new Set();
+    const mapOps = {};
+    const mapCentros = {};
+    const bajas = [];
+
+    if (centroSel === 'LIMA') {
+      Object.entries(DB_OPERADORES).forEach(([mat, nom]) => {
+        mapOps[mat] = { mat, nombre: nom, fechas: {}, sum: 0, count: 0 };
+      });
+    }
+
+    rawCalidad.forEach(r => {
+      const centro = String(r[colCentro] || 'SIN CENTRO').trim().toUpperCase();
+      const mat = String(r[colMat] || '').trim().toUpperCase();
+      const rawNota = r[colNota];
+      if (rawNota === "" || rawNota === null || rawNota === undefined) return;
+      const nota = parseFloat(String(rawNota).replace(',', '.'));
+      if (isNaN(nota)) return;
+
+      if (!mapCentros[centro]) mapCentros[centro] = { nombre: centro, sum: 0, count: 0 };
+      mapCentros[centro].sum += nota;
+      mapCentros[centro].count += 1;
+
+      if (centroSel !== 'TODOS' && centro !== centroSel) return;
+      const fecha = formatDDMM(r[colFecha]);
+      if (!mat || !fecha) return;
+
+      fechasSet.add(fecha);
+      if (!mapOps[mat]) mapOps[mat] = { mat, nombre: getNombreOperador(mat, ''), fechas: {}, sum: 0, count: 0 };
+      if (!mapOps[mat].fechas[fecha]) mapOps[mat].fechas[fecha] = { sum: 0, count: 0 };
+
+      mapOps[mat].fechas[fecha].sum += nota;
+      mapOps[mat].fechas[fecha].count += 1;
+      mapOps[mat].sum += nota;
+      mapOps[mat].count += 1;
+
+      if (nota < 4) {
+        const p = [];
+        if (colC1 && String(r[colC1] || '').trim()) p.push(`<b>[Motivo Sat]:</b> ${String(r[colC1]).trim()}`);
+        if (colC2 && String(r[colC2] || '').trim()) p.push(`<b>[No Resolución]:</b> ${String(r[colC2]).trim()}`);
+        if (colC3 && String(r[colC3] || '').trim()) p.push(`<b>[Comentario]:</b> ${String(r[colC3]).trim()}`);
+        bajas.push({ fecha, mat, nombre: mapOps[mat].nombre, nota, texto: p.join('<br>') || '-' });
+      }
+    });
+
+    const fechasOrd = Array.from(fechasSet).sort((a, b) => {
+      const [da, ma] = a.split('/').map(Number);
+      const [db, mb] = b.split('/').map(Number);
+      return (ma - mb) || (da - db);
+    });
+
+    const totDia = {};
+    fechasOrd.forEach(f => totDia[f] = { sum: 0, count: 0 });
+    let sumGral = 0, cntGral = 0;
+
+    let listaOps = Object.values(mapOps).map(o => {
+      const prom = o.count > 0 ? (o.sum / o.count) : null;
+      fechasOrd.forEach(f => {
+        if (o.fechas[f]) {
+          totDia[f].sum += o.fechas[f].sum;
+          totDia[f].count += o.fechas[f].count;
+        }
+      });
+      sumGral += o.sum;
+      cntGral += o.count;
+      return { ...o, prom };
+    });
+
+    listaOps = listaOps.filter(o => {
+      if (search && !o.mat.includes(search) && !o.nombre.toUpperCase().includes(search)) return false;
+      if (estadoSel === 'CON_ENCUESTA' && o.count === 0) return false;
+      if (estadoSel === 'BAJAS' && (o.prom === null || o.prom >= 4.5)) return false;
+      return true;
+    });
+
+    listaOps.sort((a, b) => {
+      const dir = sortCalidad.dir === 'asc' ? 1 : -1;
+      if (sortCalidad.col === 'mat') return a.mat.localeCompare(b.mat) * dir;
+      if (sortCalidad.col === 'nombre') return a.nombre.localeCompare(b.nombre) * dir;
+      if (sortCalidad.col === 'prom') {
+        const va = a.prom === null ? 999 : a.prom;
+        const vb = b.prom === null ? 999 : b.prom;
+        return (va - vb) * dir;
+      }
+      const fa = a.fechas[sortCalidad.col] ? (a.fechas[sortCalidad.col].sum / a.fechas[sortCalidad.col].count) : -1;
+      const fb = b.fechas[sortCalidad.col] ? (b.fechas[sortCalidad.col].sum / b.fechas[sortCalidad.col].count) : -1;
+      return (fa - fb) * dir;
+    });
+
+    const promGlobalStr = cntGral > 0 ? (sumGral / cntGral).toFixed(2).replace('.', ',') : '-';
+    let html = `<table id="tbl-calidad-main" class="excel-grid calidad-tbl"><thead>
+      <tr class="row-total-dia">
+        <td class="sticky-c1">TOTAL / PROM.</td>
+        <td class="sticky-c2" style="text-align:center !important;">DÍA</td>`;
+    fechasOrd.forEach(f => {
+      const td = totDia[f];
+      html += `<td>${td.count > 0 ? (td.sum / td.count).toFixed(2).replace('.', ',') : '-'}</td>`;
+    });
+    html += `<td class="total-final-box">${promGlobalStr}</td></tr>`;
+
+    html += `<tr class="header-cols">
+      <th class="sticky-c1" onclick="setSortCalidad('mat')">MATRICULA <span class="sort-icon">▼</span></th>
+      <th class="sticky-c2" onclick="setSortCalidad('nombre')">Operador (BUSCARV) <span class="sort-icon">▼</span></th>`;
+    fechasOrd.forEach(f => {
+      html += `<th onclick="setSortCalidad('${f}')">${f} <span class="sort-icon">▼</span></th>`;
+    });
+    html += `<th onclick="setSortCalidad('prom')">Prom. Sat. <span class="sort-icon">⇅</span></th></tr></thead><tbody>`;
+
+    listaOps.forEach(o => {
+      let clsProm = '';
+      let txtProm = '-';
+      if (o.prom !== null) {
+        txtProm = o.prom.toFixed(2).replace('.', ',');
+        clsProm = o.prom >= 4.5 ? 'celda-verde' : (o.prom < 4.0 ? 'celda-naranja' : 'celda-amarilla');
+      }
+      html += `<tr>
+        <td class="sticky-c1">${o.mat}</td>
+        <td class="sticky-c2">${o.nombre}</td>`;
+      fechasOrd.forEach(f => {
+        const c = o.fechas[f];
+        if (c) {
+          const val = c.sum / c.count;
+          const cls = val >= 4.5 ? 'celda-verde' : (val < 4.0 ? 'celda-naranja' : 'celda-amarilla');
+          html += `<td class="${cls}">${val.toFixed(2).replace('.', ',')}</td>`;
+        } else {
+          html += `<td>-</td>`;
+        }
+      });
+      html += `<td class="${clsProm}">${txtProm}</td></tr>`;
+    });
+    html += `</tbody></table>`;
+    document.getElementById('container-calidad-matriz').innerHTML = html;
+
+    let htmlC = `<table id="tbl-calidad-centros" class="excel-grid"><thead><tr class="header-cols"><th style="top:0;">CENTRO</th><th style="top:0;">Encuestas</th><th style="top:0;">Promedio</th></tr></thead><tbody>`;
+    Object.values(mapCentros).sort((a, b) => (b.sum / b.count) - (a.sum / a.count)).forEach(c => {
+      const p = (c.sum / c.count).toFixed(2).replace('.', ',');
+      htmlC += `<tr style="${c.nombre === 'LIMA' ? 'background:#fef9c3; font-weight:700;' : ''}"><td style="text-align:left;">${c.nombre}</td><td>${c.count}</td><td>${p}</td></tr>`;
+    });
+    htmlC += `</tbody></table>`;
+    document.getElementById('container-calidad-centros').innerHTML = htmlC;
+
+    let htmlB = `<table id="tbl-calidad-bajas" class="excel-grid"><thead><tr class="header-cols"><th style="top:0;">Fecha</th><th style="top:0;">Matrícula</th><th style="top:0;">Operador</th><th style="top:0;">Nota</th><th style="top:0;">Comentarios / Motivos (3 columnas)</th></tr></thead><tbody>`;
+    if (!bajas.length) htmlB += `<tr><td colspan="5">Sin notas menores a 4,00</td></tr>`;
+    else bajas.forEach(b => {
+      htmlB += `<tr><td>${b.fecha}</td><td>${b.mat}</td><td style="text-align:left;"><strong>${b.nombre}</strong></td><td class="celda-naranja">${b.nota.toFixed(2).replace('.', ',')}</td><td class="wrap-comment">${b.texto}</td></tr>`;
+    });
+    htmlB += `</tbody></table>`;
+    document.getElementById('container-calidad-bajas').innerHTML = htmlB;
+  }
+
+  // =====================================================================
+  // LÓGICA TMO
+  // =====================================================================
+  function poblarFiltrosTMO() {
+    if (!rawTMO.length) return;
+    const keys = Object.keys(rawTMO[0] || {});
+    const colS = keys.find(k => k.toUpperCase() === 'SERVICIO') || keys[6];
+    const colO = keys.find(k => k.toUpperCase() === 'ORIGEN') || keys[7];
+
+    fillSelectOptions(rawTMO, colS, 'filter-servicio-tmo', 'Servicio: Todos');
+    fillSelectOptions(rawTMO, colO, 'filter-origen-tmo', 'Origen: Todos');
+  }
+
+  async function handleTMOUpload(e) {
+    const files = Array.from(e.target.files);
+    if (!files.length) return;
+    document.getElementById('status-tmo').innerText = `Unificando ${files.length} archivo(s)...`;
+
+    let allRows = [];
+    const infoList = [];
+    for (const f of files) {
+      const res = await parseWorkbookFile(f, ['USUARIO', 'NOMBRE', 'TIEMPO', 'SERVICIO']);
+      allRows = allRows.concat(res.rows);
+      infoList.push(`${res.fileName} (${res.rows.length.toLocaleString()})`);
+    }
+    rawTMO = allRows;
+
+    poblarFiltrosTMO();
+    document.getElementById('tmo-dashboard').style.display = 'block';
+    document.getElementById('btn-save-tmo').disabled = false;
+    document.getElementById('tmo-sub-info').innerText = `Vista previa local: ${infoList.join(' + ')} — Total: ${rawTMO.length.toLocaleString()} registros.`;
+    document.getElementById('status-tmo').innerHTML = `📂 ${files.length} archivo(s) cargado(s) localmente. Escribe tu clave y haz clic en <b>☁️ Guardar en la Nube</b>.`;
+    renderTMOUI();
+  }
+
+  function setSortTMO(col) {
+    if (sortTMO.col === col) sortTMO.dir = sortTMO.dir === 'asc' ? 'desc' : 'asc';
+    else { sortTMO.col = col; sortTMO.dir = col === 'nombre' || col === 'usuario' ? 'asc' : 'desc'; }
+    renderTMOUI();
+  }
+
+  function renderTMOUI() {
+    if (!rawTMO.length) return;
+    const servFilter = document.getElementById('filter-servicio-tmo').value;
+    const origFilter = document.getElementById('filter-origen-tmo').value;
+    const search = document.getElementById('search-tmo').value.trim().toUpperCase();
+
+    const keys = Object.keys(rawTMO[0]);
+    const colUser = keys.find(k => k.toUpperCase() === 'USUARIO') || keys[1];
+    const colNom = keys.find(k => k.toUpperCase() === 'NOMBRE') || keys[2];
+    const colFecha = keys.find(k => k.toUpperCase().includes('FECHA INICIO')) || keys[3];
+    const colServ = keys.find(k => k.toUpperCase() === 'SERVICIO') || keys[6];
+    const colOrig = keys.find(k => k.toUpperCase() === 'ORIGEN') || keys[7];
+    const colTiempo = keys.find(k => k.toUpperCase() === 'TIEMPO') || keys[36];
+
+    const ops = {};
+    const servMap = {};
+    const origMap = {};
+    const fechasSet = new Set();
+    let totalLlamadas = 0, totalSeg = 0;
+
+    rawTMO.forEach(r => {
+      const serv = String(r[colServ] || 'SIN SERVICIO').trim().toUpperCase();
+      const orig = String(r[colOrig] || 'SIN ORIGEN').trim().toUpperCase();
+      if (servFilter !== 'TODOS' && serv !== servFilter) return;
+      if (origFilter !== 'TODOS' && orig !== origFilter) return;
+
+      const seg = parseSeconds(r[colTiempo]);
+      if (isNaN(seg) || seg < 0) return;
+
+      const user = String(r[colUser] || '').trim();
+      const nombre = String(r[colNom] || user || 'SIN NOMBRE').trim().replace(/\s+/g, ' ');
+      const fecha = formatDDMM(r[colFecha]);
+      if (fecha) fechasSet.add(fecha);
+
+      totalLlamadas += 1;
+      totalSeg += seg;
+
+      const keyOp = user + '|' + nombre.toUpperCase();
+      if (!ops[keyOp]) ops[keyOp] = { usuario: user, nombre, llamadas: 0, seg: 0, fechas: {} };
+      ops[keyOp].llamadas += 1;
+      ops[keyOp].seg += seg;
+
+      if (fecha) {
+        if (!ops[keyOp].fechas[fecha]) ops[keyOp].fechas[fecha] = { sum: 0, count: 0 };
+        ops[keyOp].fechas[fecha].sum += seg;
+        ops[keyOp].fechas[fecha].count += 1;
+      }
+
+      if (!servMap[serv]) servMap[serv] = { nombre: serv, llamadas: 0, seg: 0 };
+      servMap[serv].llamadas += 1;
+      servMap[serv].seg += seg;
+
+      if (!origMap[orig]) origMap[orig] = { nombre: orig, llamadas: 0, seg: 0 };
+      origMap[orig].llamadas += 1;
+      origMap[orig].seg += seg;
+    });
+
+    const tmoGlobalSeg = totalLlamadas > 0 ? (totalSeg / totalLlamadas) : 0;
+    const tmoGlobalMin = tmoGlobalSeg / 60;
+    document.getElementById('kpi-llamadas').innerText = totalLlamadas.toLocaleString('es-PE');
+    document.getElementById('kpi-tmo-seg').innerText = tmoGlobalSeg.toFixed(1).replace('.', ',');
+    document.getElementById('kpi-tmo-min').innerText = tmoGlobalMin.toFixed(2).replace('.', ',');
+    document.getElementById('kpi-tmo-mmss').innerText = formatMMSS(Math.round(tmoGlobalSeg));
+
+    let listaOps = Object.values(ops).map(o => ({
+      ...o,
+      tmo: o.llamadas > 0 ? (o.seg / o.llamadas) : 0
+    }));
+
+    document.getElementById('kpi-operadores').innerText = listaOps.length;
+
+    if (search) {
+      listaOps = listaOps.filter(o => o.usuario.includes(search) || o.nombre.toUpperCase().includes(search));
+    }
+
+    listaOps.sort((a, b) => {
+      const dir = sortTMO.dir === 'asc' ? 1 : -1;
+      if (sortTMO.col === 'usuario') return a.usuario.localeCompare(b.usuario, undefined, { numeric: true }) * dir;
+      if (sortTMO.col === 'nombre') return a.nombre.localeCompare(b.nombre) * dir;
+      if (sortTMO.col === 'llamadas') return (a.llamadas - b.llamadas) * dir;
+      if (sortTMO.col === 'seg') return (a.seg - b.seg) * dir;
+      return (a.tmo - b.tmo) * dir;
+    });
+
+    const maxLlamadas = Math.max(...listaOps.map(o => o.llamadas), 1);
+    const minTMO = Math.min(...listaOps.map(o => o.tmo), 250);
+    const maxTMO = Math.max(...listaOps.map(o => o.tmo), 600);
+
+    let htmlT = `<table id="tbl-tmo-main" class="excel-grid tmo-tbl"><thead><tr>
+      <th onclick="setSortTMO('usuario')">Usuario <span class="sort-icon">▼</span></th>
+      <th onclick="setSortTMO('nombre')">Operador (Nombre) <span class="sort-icon">▼</span></th>
+      <th onclick="setSortTMO('llamadas')">Total Llamadas <span class="sort-icon">▼</span></th>
+      <th onclick="setSortTMO('seg')">Tiempo Total (Seg) <span class="sort-icon">▼</span></th>
+      <th onclick="setSortTMO('tmo')">TMO (Seg) <span class="sort-icon">▼</span></th>
+      <th onclick="setSortTMO('tmo')">TMO (mm:ss) <span class="sort-icon">▼</span></th>
+    </tr></thead><tbody>`;
+
+    listaOps.forEach(o => {
+      const pctBar = Math.round((o.llamadas / maxLlamadas) * 100);
+      const bgHeat = getHeatColor(o.tmo, minTMO, maxTMO);
+      htmlT += `<tr>
+        <td>${o.usuario}</td>
+        <td style="text-align:left;">${o.nombre}</td>
+        <td class="data-bar-cell">
+          <div class="data-bar-fill" style="width:${pctBar}%;"></div>
+          <span class="data-bar-text">${o.llamadas.toLocaleString('es-PE')}</span>
+        </td>
+        <td style="text-align:right;">${Math.round(o.seg).toLocaleString('es-PE')}</td>
+        <td style="background:${bgHeat}; font-weight:700;">${o.tmo.toFixed(1).replace('.', ',')}</td>
+        <td style="font-weight:600;">${formatMMSS(Math.round(o.tmo))}</td>
+      </tr>`;
+    });
+    htmlT += `</tbody></table>`;
+    document.getElementById('container-tmo-tabla').innerHTML = htmlT;
+
+    let htmlG = '';
+    listaOps.forEach(o => {
+      const pctWidth = Math.min(100, Math.round((o.tmo / (maxTMO * 1.05)) * 100));
+      htmlG += `<div class="bar-row" title="${o.nombre}: ${o.tmo.toFixed(1)} seg (${formatMMSS(Math.round(o.tmo))})">
+        <div class="bar-track">
+          <div class="bar-blue" style="width:${pctWidth}%;"></div>
+        </div>
+        <div class="bar-op-name">${o.nombre}</div>
+      </div>`;
+    });
+    document.getElementById('container-tmo-grafico').innerHTML = htmlG;
+
+    renderMiniTabla('container-tmo-serv', 'tbl-tmo-serv', 'Servicio', Object.values(servMap));
+    renderMiniTabla('container-tmo-orig', 'tbl-tmo-orig', 'Origen', Object.values(origMap));
+
+    const fechasOrd = Array.from(fechasSet).sort((a, b) => {
+      const [da, ma] = a.split('/').map(Number);
+      const [db, mb] = b.split('/').map(Number);
+      return (ma - mb) || (da - db);
+    });
+    let htmlD = `<table id="tbl-tmo-diario" class="excel-grid tmo-tbl"><thead><tr><th class="sticky-c1" style="background:#1b365d; left:0;">Operador</th>`;
+    fechasOrd.forEach(f => htmlD += `<th>${f}</th>`);
+    htmlD += `<th>TMO Gral</th></tr></thead><tbody>`;
+    listaOps.forEach(o => {
+      htmlD += `<tr><td class="sticky-c1" style="text-align:left; font-weight:600;">${o.nombre}</td>`;
+      fechasOrd.forEach(f => {
+        const c = o.fechas[f];
+        htmlD += c ? `<td>${formatMMSS(Math.round(c.sum / c.count))}</td>` : `<td>-</td>`;
+      });
+      htmlD += `<td style="font-weight:700;">${formatMMSS(Math.round(o.tmo))}</td></tr>`;
+    });
+    htmlD += `</tbody></table>`;
+    document.getElementById('container-tmo-diario').innerHTML = htmlD;
+  }
+
+  function renderMiniTabla(wrapId, tblId, labelCol, items) {
+    let h = `<table id="${tblId}" class="excel-grid tmo-tbl"><thead><tr><th>${labelCol}</th><th>Llamadas</th><th>TMO (Seg)</th><th>TMO (mm:ss)</th></tr></thead><tbody>`;
+    items.sort((a, b) => b.llamadas - a.llamadas).forEach(it => {
+      const p = it.seg / it.llamadas;
+      h += `<tr><td style="text-align:left; font-weight:600;">${it.nombre}</td><td>${it.llamadas.toLocaleString('es-PE')}</td><td>${p.toFixed(1).replace('.', ',')}</td><td>${formatMMSS(Math.round(p))}</td></tr>`;
+    });
+    h += `</tbody></table>`;
+    document.getElementById(wrapId).innerHTML = h;
+  }
+
+  function getHeatColor(val, min, max) {
+    const ratio = Math.max(0, Math.min(1, (val - min) / (max - min || 1)));
+    if (ratio >= 0.75) return '#f8696b';
+    if (ratio >= 0.55) return '#fa9d75';
+    if (ratio >= 0.35) return '#ffeb84';
+    if (ratio >= 0.18) return '#c1d980';
+    return '#63be7b';
+  }
+
+  function fillSelectOptions(rows, col, selId, defaultLabel) {
+    const vals = new Set(rows.map(r => String(r[col] || '').trim().toUpperCase()).filter(Boolean));
+    const sel = document.getElementById(selId);
+    sel.innerHTML = `<option value="TODOS">${defaultLabel}</option>`;
+    Array.from(vals).sort().forEach(v => sel.innerHTML += `<option value="${v}">${v}</option>`);
+  }
+
+  function formatDDMM(v) {
+    if (!v) return '';
+    if (v instanceof Date && !isNaN(v)) {
+      return `${String(v.getUTCDate()).padStart(2, '0')}/${String(v.getUTCMonth() + 1).padStart(2, '0')}`;
+    }
+    const m = String(v).trim().match(/(\d{1,2})[\/\-](\d{1,2})/);
+    return m ? `${m[1].padStart(2, '0')}/${m[2].padStart(2, '0')}` : '';
+  }
+
+  function parseSeconds(v) {
+    if (typeof v === 'number') return v < 1 && v > 0 ? Math.round(v * 86400) : v;
+    if (v instanceof Date) return v.getUTCHours() * 3600 + v.getUTCMinutes() * 60 + v.getUTCSeconds();
+    const s = String(v).trim();
+    if (s.includes(':')) {
+      const p = s.split(':').map(Number);
+      if (p.length === 3) return p[0] * 3600 + p[1] * 60 + p[2];
+      if (p.length === 2) return p[0] * 60 + p[1];
+    }
+    return parseFloat(s.replace(',', '.'));
+  }
+
+  function formatMMSS(sec) {
+    const m = Math.floor(sec / 60);
+    const s = Math.floor(sec % 60);
+    return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+  }
+
+  function exportTableCSV(id, filename) {
+    const t = document.getElementById(id);
+    if (!t) return;
+    const csv = Array.from(t.rows).map(r => Array.from(r.cells).map(c => `"${c.innerText.replace(/\n/g, ' | ').replace(/"/g, '""')}"`).join(';'));
+    const blob = new Blob(["\uFEFF" + csv.join('\n')], { type: 'text/csv;charset=utf-8;' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = filename;
+    a.click();
+  }
+</script>
+</body>
+</html>
