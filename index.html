@@ -214,6 +214,7 @@
     tr.header-cols th.sticky-c1, tr.header-cols th.sticky-c2 { background: #0f4c4c; z-index: 6; }
 
     /* Semáforos exactos */
+    .celda-azul { background-color: #bdd7ee !important; color: #1f4e78; font-weight: 700; }
     .celda-verde { background-color: #c6efce !important; color: #006100; font-weight: 600; }
     .celda-naranja { background-color: #f4b084 !important; color: #833c0c; font-weight: 700; }
     .celda-amarilla { background-color: #ffeb9c !important; color: #9c6500; font-weight: 600; }
@@ -972,7 +973,7 @@
       let txtProm = '-';
       if (o.prom !== null) {
         txtProm = o.prom.toFixed(2).replace('.', ',');
-        clsProm = o.prom >= 4.5 ? 'celda-verde' : (o.prom < 4.0 ? 'celda-naranja' : 'celda-amarilla');
+        clsProm = Math.round(o.prom * 100) >= 500 ? 'celda-azul' : (o.prom >= 4.5 ? 'celda-verde' : (o.prom < 4.0 ? 'celda-naranja' : 'celda-amarilla'));
       }
       html += `<tr>
         <td class="sticky-c1">${o.mat}</td>
@@ -981,7 +982,7 @@
         const c = o.fechas[f];
         if (c) {
           const val = c.sum / c.count;
-          const cls = val >= 4.5 ? 'celda-verde' : (val < 4.0 ? 'celda-naranja' : 'celda-amarilla');
+          const cls = Math.round(val * 100) >= 500 ? 'celda-azul' : (val >= 4.5 ? 'celda-verde' : (val < 4.0 ? 'celda-naranja' : 'celda-amarilla'));
           html += `<td class="${cls}">${val.toFixed(2).replace('.', ',')}</td>`;
         } else {
           html += `<td>-</td>`;
