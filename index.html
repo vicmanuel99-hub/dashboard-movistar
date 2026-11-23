@@ -41,6 +41,17 @@
       margin-left: 4px;
       user-select: none;
     }
+    .date-badge {
+      font-size: 11px;
+      font-weight: 600;
+      color: #475569;
+      background: #f1f5f9;
+      border: 1px solid #cbd5e1;
+      padding: 2px 8px;
+      border-radius: 999px;
+      letter-spacing: 0.2px;
+      user-select: none;
+    }
     .nav-btn {
       padding: 10px 22px;
       border: none;
@@ -371,6 +382,7 @@
       <button id="btn-tab-calidad" class="nav-btn active-calidad" onclick="switchView('calidad')">📊 CALIDAD — TABLA DINÁMICA MATRICIAL LIMA</button>
       <button id="btn-tab-tmo" class="nav-btn" onclick="switchView('tmo')">⏱️ TMO — REVISIÓN LLAMADAS CAT</button>
       <span class="version-badge" title="Versión del dashboard">v2.0</span>
+      <span id="fecha-hoy-badge" class="date-badge" title="Fecha actual"></span>
     </div>
     <div id="cloud-global-status" class="cloud-badge">⏳ Conectando con la nube...</div>
   </div>
@@ -580,6 +592,17 @@
   let rawTMO = [];
   let sortCalidad = { col: 'prom', dir: 'asc' };
   let sortTMO = { col: 'tmo', dir: 'desc' };
+
+  (function mostrarFechaHoy() {
+    const el = document.getElementById('fecha-hoy-badge');
+    if (el) {
+      el.textContent = '📅 ' + new Date().toLocaleDateString('es-PE', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric'
+      });
+    }
+  })();
 
   // =====================================================================
   // CARGA AUTOMÁTICA DESDE GOOGLE SHEETS AL ABRIR LA PÁGINA
