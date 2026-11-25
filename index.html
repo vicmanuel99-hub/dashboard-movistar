@@ -302,7 +302,7 @@
     }
     .data-bar-text { position: relative; z-index: 2; }
 
-    /* Gráfico horizontal estilo Excel a la derecha */
+    /* Gráfico horizontal de productividad a la derecha */
     .chart-card {
       background: #ffffff;
       border: 1px solid #bfbfbf;
@@ -312,44 +312,101 @@
     }
     .chart-title {
       text-align: center;
-      font-size: 17px;
+      font-size: 15.5px;
       font-weight: 700;
-      color: #404040;
-      margin: 0 0 12px 0;
+      color: #1b365d;
+      margin: 0 0 4px 0;
     }
-    .bar-row {
+    .chart-subtitle {
+      text-align: center;
+      font-size: 11px;
+      color: #64748b;
+      margin-bottom: 10px;
+    }
+    .prod-mini-kpis {
       display: grid;
-      grid-template-columns: 1fr 220px;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6px;
+      margin-bottom: 12px;
+    }
+    .prod-mini-box {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 6px;
+      padding: 6px 8px;
+      text-align: center;
+    }
+    .prod-mini-lbl { font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase; }
+    .prod-mini-val { font-size: 16px; font-weight: 800; color: #0f172a; margin-top: 1px; }
+    .prod-mini-sub { font-size: 10px; color: #475569; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+    .prod-bar-row {
+      display: grid;
+      grid-template-columns: 168px 1fr 52px;
       align-items: center;
       gap: 8px;
-      margin-bottom: 4px;
-      font-size: 11px;
+      margin-bottom: 6px;
+      font-size: 11.5px;
     }
-    .bar-track {
+    .prod-op-info {
       display: flex;
-      justify-content: flex-end;
       align-items: center;
-      background: repeating-linear-gradient(
-        to right,
-        transparent,
-        transparent 19.5%,
-        #d9d9d9 20%
-      );
-      height: 13px;
+      gap: 5px;
+      overflow: hidden;
     }
-    .bar-blue {
-      height: 9px;
-      background: #4472c4;
-      border-radius: 1px;
-      transition: width 0.3s;
-    }
-    .bar-op-name {
-      text-align: left;
-      color: #333333;
+    .prod-op-name {
+      color: #1e293b;
+      font-weight: 600;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
     }
+    .prod-turno-tag {
+      font-size: 9.5px;
+      font-weight: 700;
+      padding: 1px 4px;
+      border-radius: 4px;
+      flex-shrink: 0;
+    }
+    .pt-dia { background: #fef3c7; color: #92400e; }
+    .pt-noche { background: #e0e7ff; color: #3730a3; }
+    .prod-track {
+      position: relative;
+      height: 14px;
+      background: #f1f5f9;
+      border-radius: 999px;
+      overflow: hidden;
+      border: 1px solid #e2e8f0;
+    }
+    .prod-fill {
+      height: 100%;
+      border-radius: 999px;
+      transition: width 0.25s ease;
+    }
+    .prod-pct-val {
+      text-align: right;
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+      font-size: 11.5px;
+    }
+    .prod-filters-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .prod-filters-bar select {
+      padding: 5px 8px;
+      border: 1px solid #cbd5e1;
+      border-radius: 4px;
+      font-size: 12px;
+      background: #fff;
+      color: #1f2937;
+      font-weight: 600;
+    }
+    .celda-prod-alta { background-color: #dcfce7 !important; color: #065f46; font-weight: 700; }
+    .celda-prod-media { background-color: #fef3c7 !important; color: #92400e; font-weight: 700; }
+    .celda-prod-baja { background-color: #fee2e2 !important; color: #991b1b; font-weight: 700; }
 
     /* Secciones secundarias plegables/inferiores */
     .sub-card {
@@ -460,6 +517,11 @@
       </div>
       <div class="filter-controls">
         <input type="text" id="search-tmo" placeholder="🔍 Filtrar operador o usuario..." oninput="renderTMOUI()">
+        <select id="filter-turno-tmo" onchange="syncProdControls('top')">
+          <option value="TODOS">Turno: Todos</option>
+          <option value="DIURNO">☀️ Turno Día (8h / 6h)</option>
+          <option value="NOCTURNO">🌙 Turno Noche (10h)</option>
+        </select>
         <select id="filter-servicio-tmo" onchange="renderTMOUI()">
           <option value="TODOS">Servicio: Todos</option>
         </select>
@@ -505,7 +567,7 @@
         </div>
       </div>
 
-      <!-- TABLA IZQUIERDA + GRÁFICO DERECHA -->
+      <!-- TABLA IZQUIERDA + PRODUCTIVIDAD DERECHA -->
       <div class="tmo-workspace">
         <div>
           <div class="section-label-excel">1. RESUMEN DINÁMICO DE TMO POR OPERADOR (HAZ CLIC EN CUALQUIER ENCABEZADO PARA ORDENAR)</div>
@@ -513,12 +575,16 @@
         </div>
 
         <div class="chart-card">
-          <h3 class="chart-title">TMO Promedio por Operador (Segundos)</h3>
+          <h3 class="chart-title">📈 Productividad por Operador (% Tiempo Gestionado)</h3>
+          <div class="chart-subtitle" id="prod-chart-subtitle">
+            Base: Jornada laboral − 45 min de descanso (Día 8h → 7h 15m · Noche 10h → 9h 15m)
+          </div>
+          <div class="prod-mini-kpis" id="prod-mini-kpis"></div>
           <div id="container-tmo-grafico"></div>
         </div>
       </div>
 
-      <!-- TABLAS SECUNDARIAS: SERVICIO, ORIGEN Y MATRIZ DIARIA -->
+      <!-- TABLAS SECUNDARIAS: SERVICIO, ORIGEN Y ANÁLISIS DIARIO DE PRODUCTIVIDAD -->
       <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top:16px;">
         <div class="sub-card" style="margin-top:0;">
           <div class="sub-card-head">
@@ -538,11 +604,35 @@
       </div>
 
       <div class="sub-card">
-        <div class="sub-card-head">
-          <strong style="color:#1b365d; font-size:13px;">4. EVOLUCIÓN DIARIA TMO POR OPERADOR (MM:SS)</strong>
-          <button class="btn-export" onclick="exportTableCSV('tbl-tmo-diario', 'TMO_Diario.csv')">CSV</button>
+        <div class="sub-card-head" style="flex-wrap:wrap; gap:8px;">
+          <div>
+            <strong style="color:#1b365d; font-size:13.5px;">4. ANÁLISIS DIARIO DE PRODUCTIVIDAD POR OPERADOR (% GESTIONADO VS JORNADA NETA)</strong>
+            <div style="font-size:11px; color:#64748b; margin-top:2px;">
+              Descuento aplicado: <b>45 min</b> de descanso diario (10h → 9h 15m · 8h → 7h 15m · 6h → 5h 15m). Pasa el mouse por cualquier porcentaje para ver horas gestionadas y llamadas.
+            </div>
+          </div>
+          <div class="prod-filters-bar">
+            <select id="prod-order" onchange="renderTMOUI()" title="Ordenar productividad">
+              <option value="desc" selected>🏆 Más productivo → Menos</option>
+              <option value="asc">⚠️ Menos productivo → Más</option>
+              <option value="nombre">🔤 Nombre (A → Z)</option>
+            </select>
+            <select id="prod-turno" onchange="syncProdControls('bottom')" title="Filtrar por turno">
+              <option value="TODOS">Turno: Todos</option>
+              <option value="DIURNO">☀️ Día (8h / 6h)</option>
+              <option value="NOCTURNO">🌙 Noche (10h)</option>
+            </select>
+            <select id="prod-periodo-tipo" onchange="onProdPeriodoTipoChange()" title="Agrupar o filtrar por periodo">
+              <option value="TODO" selected>Periodo: Todo</option>
+              <option value="MES">Por Mes</option>
+              <option value="SEMANA">Por Semana</option>
+              <option value="DIA">Por Día</option>
+            </select>
+            <select id="prod-periodo-val" onchange="renderTMOUI()" style="display:none;" title="Seleccionar periodo"></select>
+            <button class="btn-export" onclick="exportTableCSV('tbl-prod-diario', 'Productividad_Diaria_Operador.csv')">CSV</button>
+          </div>
         </div>
-        <div class="table-container" style="max-height:420px;" id="container-tmo-diario"></div>
+        <div class="table-container" style="max-height:480px;" id="container-tmo-diario"></div>
       </div>
     </div>
   </div>
@@ -1010,16 +1100,188 @@
   }
 
   // =====================================================================
-  // LÓGICA TMO
+  // JORNADAS POR OPERADOR (USUARIO -> [Turno 'D'|'N', Campaña, HorasBrutas, Horario])
+  // Descuento de descanso: 45 min diarios (10h -> 9h 15m | 8h -> 7h 15m | 6h -> 5h 15m)
+  // =====================================================================
+  const DESCANSO_MIN = 45;
+  const DB_JORNADAS_OPERADORES = {
+    "6092": ["D", "SUP", 9, "07-16h"], "6095": ["D", "SUP", 8, "07-15h"], "6096": ["N", "ATEMP", 10, "01-11h"],
+    "6097": ["N", "SUP", 10, "01-11h"], "6103": ["D", "ATEMP", 8, "07-15h"], "6156": ["N", "SUP", 10, "01-11h"],
+    "6160": ["N", "SUP", 10, "01-11h"], "6162": ["D", "ATEMP", 8, "07-15h"], "6186": ["N", "ATEMP", 10, "01-11h"],
+    "6187": ["D", "ATEMP", 8, "07-15h"], "6195": ["D", "SUP", 8, "07-15h"], "6203": ["D", "ATEMP", 8, "07-15h"],
+    "6235": ["N", "ATEMP", 10, "01-11h"], "6337": ["N", "ATEMP", 10, "01-11h"], "6344": ["N", "ATEMP", 10, "01-11h"],
+    "6353": ["N", "ATEMP", 10, "01-11h"], "6357": ["N", "ATEMP", 10, "01-11h"], "6444": ["D", "ATEMP", 8, "07-15h"],
+    "6472": ["D", "ATEMP", 8, "07-15h"], "6473": ["N", "ATEMP", 10, "01-11h"], "6474": ["D", "SUP", 9, "07-16h"],
+    "6486": ["N", "ATEMP", 10, "01-11h"], "6539": ["N", "ATEMP", 10, "01-11h"], "6541": ["N", "ATEMP", 10, "01-11h"],
+    "6543": ["N", "GOAT", 10, "01-11h"], "6554": ["N", "ATEMP", 10, "01-11h"], "6555": ["N", "ATEMP", 10, "01-11h"],
+    "6558": ["N", "ATEMP", 10, "01-11h"], "6593": ["D", "ATEMP", 8, "07-15h"], "6594": ["N", "ATEMP", 10, "01-11h"],
+    "6595": ["N", "ATEMP", 10, "01-11h"], "6596": ["D", "ATEMP", 8, "07-15h"], "6598": ["N", "ATEMP", 10, "01-11h"],
+    "6604": ["D", "ATEMP", 8, "07-15h"], "6605": ["N", "ATEMP", 10, "01-11h"], "6607": ["N", "ATEMP", 10, "01-11h"],
+    "6608": ["N", "ATEMP", 10, "01-11h"], "6609": ["D", "ATEMP", 8, "07-15h"], "6630": ["D", "GOAT", 8, "07-15h"],
+    "6631": ["N", "GOAT", 10, "01-11h"], "6632": ["N", "GOAT", 10, "01-11h"], "6635": ["N", "GOAT", 10, "01-11h"],
+    "6636": ["N", "GOAT", 10, "01-11h"], "6637": ["N", "GOAT", 10, "01-11h"], "6640": ["D", "GOAT", 8, "07-15h"],
+    "6648": ["D", "ATEMP", 6, "08-14h"], "6650": ["D", "GOAT", 8, "07-15h"], "6651": ["D", "GOAT", 8, "07-15h"],
+    "6653": ["N", "GOAT", 10, "01-11h"], "6655": ["N", "GOAT", 10, "01-11h"], "6659": ["N", "GOAT", 10, "01-11h"],
+    "6661": ["D", "GOAT", 8, "07-15h"], "6663": ["D", "GOAT", 8, "07-15h"], "6664": ["N", "GOAT", 10, "01-11h"],
+    "6670": ["N", "GOAT", 10, "01-11h"], "6671": ["D", "GOAT", 8, "07-15h"], "6672": ["D", "GOAT", 8, "07-15h"],
+    "6673": ["D", "GOAT", 6, "08-14h"], "6674": ["D", "GOAT", 8, "07-15h"], "6675": ["D", "GOAT", 6, "07-13h"],
+    "6676": ["D", "GOAT", 6, "07-13h"], "6677": ["D", "GOAT", 8, "07-15h"], "6678": ["N", "GOAT", 10, "01-11h"],
+    "6681": ["D", "GOAT", 8, "07-15h"], "6682": ["D", "GOAT", 8, "07-15h"], "6683": ["D", "GOAT", 6, "08-14h"],
+    "6684": ["N", "GOAT", 10, "01-11h"], "6685": ["D", "GOAT", 8, "07-15h"], "6686": ["D", "GOAT", 8, "07-15h"],
+    "6687": ["D", "GOAT", 8, "07-15h"], "6688": ["D", "GOAT", 8, "07-15h"], "6701": ["D", "GOAT", 8, "07-15h"],
+    "6703": ["N", "GOAT", 10, "01-11h"], "6704": ["D", "GOAT", 6, "07-13h"], "6705": ["D", "GOAT", 6, "07-13h"],
+    "6706": ["D", "GOAT", 6, "08-14h"], "6707": ["D", "GOAT", 6, "07-13h"], "6708": ["N", "GOAT", 10, "01-11h"],
+    "6709": ["D", "GOAT", 8, "07-15h"], "6718": ["N", "ATEMP", 10, "01-11h"], "6722": ["N", "ATEMP", 10, "01-11h"],
+    "6725": ["N", "ATEMP", 10, "01-11h"], "6731": ["N", "ATEMP", 10, "01-11h"], "6732": ["N", "ATEMP", 10, "01-11h"],
+    "6733": ["N", "ATEMP", 10, "01-11h"], "6734": ["N", "ATEMP", 10, "01-11h"], "6735": ["N", "ATEMP", 10, "01-11h"],
+    "6736": ["N", "ATEMP", 10, "01-11h"], "6737": ["N", "ATEMP", 10, "01-11h"], "6738": ["N", "ATEMP", 10, "01-11h"],
+    "6739": ["N", "ATEMP", 10, "01-11h"], "6742": ["N", "ATEMP", 10, "01-11h"], "6743": ["N", "ATEMP", 10, "01-11h"],
+    "6744": ["N", "ATEMP", 10, "01-11h"]
+  };
+
+  function getJornadaOperador(usuario) {
+    const info = DB_JORNADAS_OPERADORES[String(usuario || '').trim()];
+    if (info) {
+      const turno = info[0] === 'N' ? 'NOCTURNO' : 'DIURNO';
+      const horasBrutas = info[2];
+      const minNetos = Math.max(60, horasBrutas * 60 - DESCANSO_MIN);
+      return {
+        turno,
+        campana: info[1],
+        horasBrutas,
+        horario: info[3],
+        minNetos,
+        segNetosDia: minNetos * 60,
+        labelNeta: formatHorasMin(minNetos)
+      };
+    }
+    const minNetos = 8 * 60 - DESCANSO_MIN;
+    return {
+      turno: 'DIURNO',
+      campana: 'ATEMP',
+      horasBrutas: 8,
+      horario: '07-15h',
+      minNetos,
+      segNetosDia: minNetos * 60,
+      labelNeta: formatHorasMin(minNetos)
+    };
+  }
+
+  function formatHorasMin(totalMin) {
+    const m = Math.max(0, Math.round(totalMin || 0));
+    const h = Math.floor(m / 60);
+    const r = m % 60;
+    return `${h}h ${String(r).padStart(2, '0')}m`;
+  }
+
+  function formatSegHM(totalSeg) {
+    return formatHorasMin(Math.round((totalSeg || 0) / 60));
+  }
+
+  const NOMBRES_MES = ['', 'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+
+  function getWeekKeyFromDDMM(ddmm) {
+    const [d, m] = ddmm.split('/').map(Number);
+    if (!d || !m) return '';
+    const yr = new Date().getFullYear();
+    const dt = new Date(yr, m - 1, d);
+    const dow = (dt.getDay() + 6) % 7; // lunes = 0
+    const mon = new Date(dt);
+    mon.setDate(dt.getDate() - dow);
+    return `${String(mon.getDate()).padStart(2, '0')}/${String(mon.getMonth() + 1).padStart(2, '0')}`;
+  }
+
+  function sortDDMMList(arr) {
+    return arr.slice().sort((a, b) => {
+      const [da, ma] = a.split('/').map(Number);
+      const [db, mb] = b.split('/').map(Number);
+      return (ma - mb) || (da - db);
+    });
+  }
+
+  let tmoMetaPeriodos = { dias: [], semanas: [], meses: [] };
+
+  function syncProdControls(source) {
+    const topSel = document.getElementById('filter-turno-tmo');
+    const botSel = document.getElementById('prod-turno');
+    if (source === 'top' && topSel && botSel) botSel.value = topSel.value;
+    else if (source === 'bottom' && topSel && botSel) topSel.value = botSel.value;
+    renderTMOUI();
+  }
+
+  function onProdPeriodoTipoChange() {
+    const tipo = document.getElementById('prod-periodo-tipo').value;
+    const valSel = document.getElementById('prod-periodo-val');
+    if (tipo === 'TODO') {
+      valSel.style.display = 'none';
+      valSel.innerHTML = '';
+    } else if (tipo === 'MES') {
+      valSel.style.display = 'inline-block';
+      valSel.innerHTML = tmoMetaPeriodos.meses.map(m => `<option value="${m.key}">${m.label}</option>`).join('');
+    } else if (tipo === 'SEMANA') {
+      valSel.style.display = 'inline-block';
+      valSel.innerHTML = tmoMetaPeriodos.semanas.slice().reverse().map(w => `<option value="${w.key}">${w.label}</option>`).join('');
+    } else if (tipo === 'DIA') {
+      valSel.style.display = 'inline-block';
+      valSel.innerHTML = tmoMetaPeriodos.dias.slice().reverse().map(d => `<option value="${d}">${d}</option>`).join('');
+    }
+    renderTMOUI();
+  }
+
+  function getProdColor(pct) {
+    if (pct >= 50) return { bar: '#10b981', text: '#065f46', cls: 'celda-prod-alta' };
+    if (pct >= 35) return { bar: '#f59e0b', text: '#92400e', cls: 'celda-prod-media' };
+    return { bar: '#ef4444', text: '#991b1b', cls: 'celda-prod-baja' };
+  }
+
+  // =====================================================================
+  // LÓGICA TMO + PRODUCTIVIDAD
   // =====================================================================
   function poblarFiltrosTMO() {
     if (!rawTMO.length) return;
     const keys = Object.keys(rawTMO[0] || {});
     const colS = keys.find(k => k.toUpperCase() === 'SERVICIO') || keys[6];
     const colO = keys.find(k => k.toUpperCase() === 'ORIGEN') || keys[7];
+    const colF = keys.find(k => k.toUpperCase().includes('FECHA INICIO')) || keys[3];
 
     fillSelectOptions(rawTMO, colS, 'filter-servicio-tmo', 'Servicio: Todos');
     fillSelectOptions(rawTMO, colO, 'filter-origen-tmo', 'Origen: Todos');
+
+    // Construir lista de días, semanas y meses disponibles
+    const diasSet = new Set();
+    rawTMO.forEach(r => {
+      const f = formatDDMM(r[colF]);
+      if (f) diasSet.add(f);
+    });
+    const dias = sortDDMMList(Array.from(diasSet));
+
+    const mesesMap = new Map();
+    const semMap = new Map();
+    dias.forEach(d => {
+      const [, mm] = d.split('/').map(Number);
+      const mKey = String(mm).padStart(2, '0');
+      if (!mesesMap.has(mKey)) mesesMap.set(mKey, { key: mKey, label: `${NOMBRES_MES[mm] || mKey}`, dias: [] });
+      mesesMap.get(mKey).dias.push(d);
+
+      const wk = getWeekKeyFromDDMM(d);
+      if (!semMap.has(wk)) semMap.set(wk, { key: wk, dias: [] });
+      semMap.get(wk).dias.push(d);
+    });
+
+    const semanas = Array.from(semMap.values()).map((w, idx) => ({
+      key: w.key,
+      dias: w.dias,
+      label: `Sem ${idx + 1} (${w.dias[0]} – ${w.dias[w.dias.length - 1]})`
+    }));
+    const meses = Array.from(mesesMap.values()).map(m => ({
+      ...m,
+      label: `${m.label} (${m.dias.length}d)`
+    }));
+
+    tmoMetaPeriodos = { dias, semanas, meses };
+
+    const tipoEl = document.getElementById('prod-periodo-tipo');
+    if (tipoEl && tipoEl.value !== 'TODO') onProdPeriodoTipoChange();
   }
 
   async function handleTMOUpload(e) {
@@ -1054,7 +1316,25 @@
     if (!rawTMO.length) return;
     const servFilter = document.getElementById('filter-servicio-tmo').value;
     const origFilter = document.getElementById('filter-origen-tmo').value;
+    const turnoFilter = (document.getElementById('filter-turno-tmo') || { value: 'TODOS' }).value;
+    const prodOrder = (document.getElementById('prod-order') || { value: 'desc' }).value;
+    const periodoTipo = (document.getElementById('prod-periodo-tipo') || { value: 'TODO' }).value;
+    const periodoVal = (document.getElementById('prod-periodo-val') || { value: '' }).value;
     const search = document.getElementById('search-tmo').value.trim().toUpperCase();
+
+    // Conjunto de fechas permitidas por el filtro de periodo (Todo / Mes / Semana / Día)
+    let allowedDates = null;
+    let periodoEtiqueta = 'Todo el periodo';
+    if (periodoTipo === 'MES' && periodoVal) {
+      const mObj = tmoMetaPeriodos.meses.find(m => m.key === periodoVal);
+      if (mObj) { allowedDates = new Set(mObj.dias); periodoEtiqueta = mObj.label; }
+    } else if (periodoTipo === 'SEMANA' && periodoVal) {
+      const wObj = tmoMetaPeriodos.semanas.find(w => w.key === periodoVal);
+      if (wObj) { allowedDates = new Set(wObj.dias); periodoEtiqueta = wObj.label; }
+    } else if (periodoTipo === 'DIA' && periodoVal) {
+      allowedDates = new Set([periodoVal]);
+      periodoEtiqueta = `Día ${periodoVal}`;
+    }
 
     const keys = Object.keys(rawTMO[0]);
     const colUser = keys.find(k => k.toUpperCase() === 'USUARIO') || keys[1];
@@ -1076,19 +1356,24 @@
       if (servFilter !== 'TODOS' && serv !== servFilter) return;
       if (origFilter !== 'TODOS' && orig !== origFilter) return;
 
+      const fecha = formatDDMM(r[colFecha]);
+      if (allowedDates && (!fecha || !allowedDates.has(fecha))) return;
+
+      const user = String(r[colUser] || '').trim();
+      const jornada = getJornadaOperador(user);
+      if (turnoFilter !== 'TODOS' && jornada.turno !== turnoFilter) return;
+
       const seg = parseSeconds(r[colTiempo]);
       if (isNaN(seg) || seg < 0) return;
 
-      const user = String(r[colUser] || '').trim();
       const nombre = String(r[colNom] || user || 'SIN NOMBRE').trim().replace(/\s+/g, ' ');
-      const fecha = formatDDMM(r[colFecha]);
       if (fecha) fechasSet.add(fecha);
 
       totalLlamadas += 1;
       totalSeg += seg;
 
       const keyOp = user + '|' + nombre.toUpperCase();
-      if (!ops[keyOp]) ops[keyOp] = { usuario: user, nombre, llamadas: 0, seg: 0, fechas: {} };
+      if (!ops[keyOp]) ops[keyOp] = { usuario: user, nombre, jornada, llamadas: 0, seg: 0, fechas: {} };
       ops[keyOp].llamadas += 1;
       ops[keyOp].seg += seg;
 
@@ -1114,10 +1399,18 @@
     document.getElementById('kpi-tmo-min').innerText = tmoGlobalMin.toFixed(2).replace('.', ',');
     document.getElementById('kpi-tmo-mmss').innerText = formatMMSS(Math.round(tmoGlobalSeg));
 
-    let listaOps = Object.values(ops).map(o => ({
-      ...o,
-      tmo: o.llamadas > 0 ? (o.seg / o.llamadas) : 0
-    }));
+    let listaOps = Object.values(ops).map(o => {
+      const diasActivos = Math.max(1, Object.keys(o.fechas).length);
+      const segDisponibles = o.jornada.segNetosDia * diasActivos;
+      const prodPct = segDisponibles > 0 ? (o.seg / segDisponibles) * 100 : 0;
+      return {
+        ...o,
+        diasActivos,
+        segDisponibles,
+        prodPct,
+        tmo: o.llamadas > 0 ? (o.seg / o.llamadas) : 0
+      };
+    });
 
     document.getElementById('kpi-operadores').innerText = listaOps.length;
 
@@ -1125,7 +1418,8 @@
       listaOps = listaOps.filter(o => o.usuario.includes(search) || o.nombre.toUpperCase().includes(search));
     }
 
-    listaOps.sort((a, b) => {
+    // 1. TABLA RESUMEN TMO (izquierda)
+    const listaTMO = listaOps.slice().sort((a, b) => {
       const dir = sortTMO.dir === 'asc' ? 1 : -1;
       if (sortTMO.col === 'usuario') return a.usuario.localeCompare(b.usuario, undefined, { numeric: true }) * dir;
       if (sortTMO.col === 'nombre') return a.nombre.localeCompare(b.nombre) * dir;
@@ -1134,9 +1428,9 @@
       return (a.tmo - b.tmo) * dir;
     });
 
-    const maxLlamadas = Math.max(...listaOps.map(o => o.llamadas), 1);
-    const minTMO = Math.min(...listaOps.map(o => o.tmo), 250);
-    const maxTMO = Math.max(...listaOps.map(o => o.tmo), 600);
+    const maxLlamadas = Math.max(...listaTMO.map(o => o.llamadas), 1);
+    const minTMO = Math.min(...listaTMO.map(o => o.tmo), 250);
+    const maxTMO = Math.max(...listaTMO.map(o => o.tmo), 600);
 
     let htmlT = `<table id="tbl-tmo-main" class="excel-grid tmo-tbl"><thead><tr>
       <th onclick="setSortTMO('usuario')">Usuario <span class="sort-icon">▼</span></th>
@@ -1147,55 +1441,167 @@
       <th onclick="setSortTMO('tmo')">TMO (mm:ss) <span class="sort-icon">▼</span></th>
     </tr></thead><tbody>`;
 
-    listaOps.forEach(o => {
-      const pctBar = Math.round((o.llamadas / maxLlamadas) * 100);
-      const bgHeat = getHeatColor(o.tmo, minTMO, maxTMO);
-      htmlT += `<tr>
-        <td>${o.usuario}</td>
-        <td style="text-align:left;">${o.nombre}</td>
-        <td class="data-bar-cell">
-          <div class="data-bar-fill" style="width:${pctBar}%;"></div>
-          <span class="data-bar-text">${o.llamadas.toLocaleString('es-PE')}</span>
-        </td>
-        <td style="text-align:right;">${Math.round(o.seg).toLocaleString('es-PE')}</td>
-        <td style="background:${bgHeat}; font-weight:700;">${o.tmo.toFixed(1).replace('.', ',')}</td>
-        <td style="font-weight:600;">${formatMMSS(Math.round(o.tmo))}</td>
-      </tr>`;
-    });
+    if (!listaTMO.length) {
+      htmlT += `<tr><td colspan="6" style="padding:20px; color:#64748b;">Sin datos para los filtros seleccionados.</td></tr>`;
+    } else {
+      listaTMO.forEach(o => {
+        const pctBar = Math.round((o.llamadas / maxLlamadas) * 100);
+        const bgHeat = getHeatColor(o.tmo, minTMO, maxTMO);
+        htmlT += `<tr>
+          <td>${o.usuario}</td>
+          <td style="text-align:left;">${o.nombre}</td>
+          <td class="data-bar-cell">
+            <div class="data-bar-fill" style="width:${pctBar}%;"></div>
+            <span class="data-bar-text">${o.llamadas.toLocaleString('es-PE')}</span>
+          </td>
+          <td style="text-align:right;">${Math.round(o.seg).toLocaleString('es-PE')}</td>
+          <td style="background:${bgHeat}; font-weight:700;">${o.tmo.toFixed(1).replace('.', ',')}</td>
+          <td style="font-weight:600;">${formatMMSS(Math.round(o.tmo))}</td>
+        </tr>`;
+      });
+    }
     htmlT += `</tbody></table>`;
     document.getElementById('container-tmo-tabla').innerHTML = htmlT;
 
-    let htmlG = '';
-    listaOps.forEach(o => {
-      const pctWidth = Math.min(100, Math.round((o.tmo / (maxTMO * 1.05)) * 100));
-      htmlG += `<div class="bar-row" title="${o.nombre}: ${o.tmo.toFixed(1)} seg (${formatMMSS(Math.round(o.tmo))})">
-        <div class="bar-track">
-          <div class="bar-blue" style="width:${pctWidth}%;"></div>
-        </div>
-        <div class="bar-op-name">${o.nombre}</div>
-      </div>`;
+    // 2. PANEL DERECHO: PRODUCTIVIDAD POR OPERADOR (% TIEMPO GESTIONADO VS JORNADA NETA)
+    const listaProd = listaOps.slice().sort((a, b) => {
+      if (prodOrder === 'asc') return (a.prodPct - b.prodPct) || a.nombre.localeCompare(b.nombre);
+      if (prodOrder === 'nombre') return a.nombre.localeCompare(b.nombre);
+      return (b.prodPct - a.prodPct) || a.nombre.localeCompare(b.nombre);
     });
+
+    const totalSegGest = listaProd.reduce((s, o) => s + o.seg, 0);
+    const totalSegDisp = listaProd.reduce((s, o) => s + o.segDisponibles, 0);
+    const prodGlobalPct = totalSegDisp > 0 ? (totalSegGest / totalSegDisp) * 100 : 0;
+    const sortedBest = listaOps.slice().sort((a, b) => b.prodPct - a.prodPct);
+    const topOp = sortedBest[0];
+    const lowOp = sortedBest[sortedBest.length - 1];
+
+    const subEl = document.getElementById('prod-chart-subtitle');
+    if (subEl) {
+      const turnoTxt = turnoFilter === 'DIURNO' ? '☀️ Turno Día' : (turnoFilter === 'NOCTURNO' ? '🌙 Turno Noche' : 'Todos los turnos');
+      subEl.innerHTML = `${periodoEtiqueta} · ${turnoTxt} · Base: Jornada − <b>45 min</b> descanso (10h→9h 15m · 8h→7h 15m)`;
+    }
+
+    const miniKpisEl = document.getElementById('prod-mini-kpis');
+    if (miniKpisEl) {
+      const colG = getProdColor(prodGlobalPct);
+      miniKpisEl.innerHTML = listaProd.length ? `
+        <div class="prod-mini-box">
+          <div class="prod-mini-lbl">Prom. Equipo</div>
+          <div class="prod-mini-val" style="color:${colG.text};">${prodGlobalPct.toFixed(1).replace('.', ',')}%</div>
+          <div class="prod-mini-sub">${formatSegHM(totalSegGest)} gest.</div>
+        </div>
+        <div class="prod-mini-box">
+          <div class="prod-mini-lbl">Más Productivo</div>
+          <div class="prod-mini-val" style="color:#065f46;">${topOp.prodPct.toFixed(1).replace('.', ',')}%</div>
+          <div class="prod-mini-sub" title="${topOp.nombre}">${topOp.nombre}</div>
+        </div>
+        <div class="prod-mini-box">
+          <div class="prod-mini-lbl">Menor Prod.</div>
+          <div class="prod-mini-val" style="color:#991b1b;">${lowOp.prodPct.toFixed(1).replace('.', ',')}%</div>
+          <div class="prod-mini-sub" title="${lowOp.nombre}">${lowOp.nombre}</div>
+        </div>` : '';
+    }
+
+    let htmlG = '';
+    if (!listaProd.length) {
+      htmlG = `<div style="text-align:center; padding:24px; color:#64748b; font-size:12px;">Sin operadores para mostrar con estos filtros.</div>`;
+    } else {
+      listaProd.forEach(o => {
+        const pctBar = Math.min(100, Math.max(2, o.prodPct));
+        const col = getProdColor(o.prodPct);
+        const esNoche = o.jornada.turno === 'NOCTURNO';
+        const tagCls = esNoche ? 'pt-noche' : 'pt-dia';
+        const tagTxt = `${esNoche ? '🌙' : '☀️'}${o.jornada.horasBrutas}h`;
+        const tip = `${o.nombre} (${o.usuario})\nTurno: ${esNoche ? 'Noche' : 'Día'} · Jornada neta: ${o.jornada.labelNeta}/día (${o.diasActivos}d)\nTiempo gestionado: ${formatSegHM(o.seg)} de ${formatSegHM(o.segDisponibles)}\nProductividad: ${o.prodPct.toFixed(1)}% · ${o.llamadas} llamadas`;
+        htmlG += `<div class="prod-bar-row" title="${tip}">
+          <div class="prod-op-info">
+            <span class="prod-turno-tag ${tagCls}">${tagTxt}</span>
+            <span class="prod-op-name">${o.nombre}</span>
+          </div>
+          <div class="prod-track">
+            <div class="prod-fill" style="width:${pctBar.toFixed(1)}%; background:${col.bar};"></div>
+          </div>
+          <div class="prod-pct-val" style="color:${col.text};">${o.prodPct.toFixed(1).replace('.', ',')}%</div>
+        </div>`;
+      });
+    }
     document.getElementById('container-tmo-grafico').innerHTML = htmlG;
 
+    // 2 y 3. DESGLOSES SERVICIO Y ORIGEN
     renderMiniTabla('container-tmo-serv', 'tbl-tmo-serv', 'Servicio', Object.values(servMap));
     renderMiniTabla('container-tmo-orig', 'tbl-tmo-orig', 'Origen', Object.values(origMap));
 
-    const fechasOrd = Array.from(fechasSet).sort((a, b) => {
-      const [da, ma] = a.split('/').map(Number);
-      const [db, mb] = b.split('/').map(Number);
-      return (ma - mb) || (da - db);
-    });
-    let htmlD = `<table id="tbl-tmo-diario" class="excel-grid tmo-tbl"><thead><tr><th class="sticky-c1" style="background:#1b365d; left:0;">Operador</th>`;
-    fechasOrd.forEach(f => htmlD += `<th>${f}</th>`);
-    htmlD += `<th>TMO Gral</th></tr></thead><tbody>`;
-    listaOps.forEach(o => {
-      htmlD += `<tr><td class="sticky-c1" style="text-align:left; font-weight:600;">${o.nombre}</td>`;
+    // 4. ANÁLISIS DIARIO DE PRODUCTIVIDAD POR OPERADOR (%)
+    const fechasOrd = sortDDMMList(Array.from(fechasSet));
+    const totDiaProd = {};
+    fechasOrd.forEach(f => totDiaProd[f] = { seg: 0, disp: 0 });
+    listaProd.forEach(o => {
       fechasOrd.forEach(f => {
         const c = o.fechas[f];
-        htmlD += c ? `<td>${formatMMSS(Math.round(c.sum / c.count))}</td>` : `<td>-</td>`;
+        if (c) {
+          totDiaProd[f].seg += c.sum;
+          totDiaProd[f].disp += o.jornada.segNetosDia;
+        }
       });
-      htmlD += `<td style="font-weight:700;">${formatMMSS(Math.round(o.tmo))}</td></tr>`;
     });
+
+    const esUnDia = fechasOrd.length === 1;
+    let htmlD = `<table id="tbl-prod-diario" class="excel-grid tmo-tbl"><thead>
+      <tr class="row-total-dia">
+        <td class="sticky-c1" style="left:0; background:#e9edf4; text-align:left !important;">PROM. EQUIPO (${listaProd.length})</td>
+        <td style="background:#e9edf4;">Jornada Neta</td>
+        <td style="background:#e9edf4;">Días</td>
+        <td class="total-final-box">${prodGlobalPct.toFixed(1).replace('.', ',')}%</td>`;
+    if (esUnDia) {
+      htmlD += `<td style="background:#e9edf4;">${formatSegHM(totalSegGest)}</td><td style="background:#e9edf4;">${totalLlamadas.toLocaleString('es-PE')}</td>`;
+    }
+    fechasOrd.forEach(f => {
+      const td = totDiaProd[f];
+      const pDia = td.disp > 0 ? (td.seg / td.disp) * 100 : null;
+      htmlD += `<td>${pDia !== null ? pDia.toFixed(1).replace('.', ',') + '%' : '-'}</td>`;
+    });
+    htmlD += `</tr><tr>
+      <th class="sticky-c1" style="background:#1b365d; left:0; top:29px; z-index:6; text-align:left;">Operador</th>
+      <th style="top:29px;">Turno / Neta</th>
+      <th style="top:29px;">Días</th>
+      <th style="top:29px;">Prod. Prom.</th>`;
+    if (esUnDia) {
+      htmlD += `<th style="top:29px;">Tiempo Gest.</th><th style="top:29px;">Llamadas</th>`;
+    }
+    fechasOrd.forEach(f => htmlD += `<th style="top:29px;">${f}</th>`);
+    htmlD += `</tr></thead><tbody>`;
+
+    if (!listaProd.length) {
+      htmlD += `<tr><td colspan="${4 + fechasOrd.length + (esUnDia ? 2 : 0)}" style="padding:20px; color:#64748b;">Sin registros de productividad para estos filtros.</td></tr>`;
+    } else {
+      listaProd.forEach(o => {
+        const colProm = getProdColor(o.prodPct);
+        const esNoche = o.jornada.turno === 'NOCTURNO';
+        const turnoBadge = `<span class="prod-turno-tag ${esNoche ? 'pt-noche' : 'pt-dia'}">${esNoche ? '🌙' : '☀️'} ${o.jornada.labelNeta}</span>`;
+        htmlD += `<tr>
+          <td class="sticky-c1" style="text-align:left; font-weight:600; left:0;">${o.nombre} <span style="color:#64748b; font-size:10px;">(${o.usuario})</span></td>
+          <td>${turnoBadge}</td>
+          <td>${o.diasActivos}</td>
+          <td class="${colProm.cls}" title="Total gestionado: ${formatSegHM(o.seg)} de ${formatSegHM(o.segDisponibles)} (${o.llamadas} llam.)">${o.prodPct.toFixed(1).replace('.', ',')}%</td>`;
+        if (esUnDia) {
+          htmlD += `<td style="font-weight:600;">${formatSegHM(o.seg)}</td><td>${o.llamadas}</td>`;
+        }
+        fechasOrd.forEach(f => {
+          const c = o.fechas[f];
+          if (c) {
+            const pctDia = (c.sum / o.jornada.segNetosDia) * 100;
+            const colD = getProdColor(pctDia);
+            const tipD = `${f} · ${formatSegHM(c.sum)} gestionadas de ${o.jornada.labelNeta} · ${c.count} llamadas · TMO ${formatMMSS(Math.round(c.sum / c.count))}`;
+            htmlD += `<td class="${colD.cls}" title="${tipD}">${pctDia.toFixed(1).replace('.', ',')}%</td>`;
+          } else {
+            htmlD += `<td style="color:#cbd5e1;">-</td>`;
+          }
+        });
+        htmlD += `</tr>`;
+      });
+    }
     htmlD += `</tbody></table>`;
     document.getElementById('container-tmo-diario').innerHTML = htmlD;
   }
